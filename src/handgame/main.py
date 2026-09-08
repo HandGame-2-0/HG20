@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QMainWindow
 from PySide6.QtCore import Qt
 
 # Real imports (uncomment once ready):
-# from handgame.gui.widgets.main_window import MainWindow
+from handgame.gui.main_window import MainWindow
 from handgame.gui.integration_controller import GUIIntegrationController
 
 def setup_logging() -> logging.Logger:
@@ -82,7 +82,7 @@ def main():
                 logger = logging.getLogger("HandGame2")
                 logger.info("Zamykanie okna GUI...")
 
-        window = DummyMainWindow(controller)
+        window = MainWindow()
         window.show()
 
         # 5. Wire up safe-shutdown contract
