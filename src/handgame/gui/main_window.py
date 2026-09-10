@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         self.game_select = GameSelectWindow()
         self.screens = {
             Screen.MAIN_MENU: self.main_menu_screen,
-            Screen.GAME_SELECT: self.game_select,
+            Screen.GAME_SELECT:  DummyScreen("Wybór gry", self.change_screen),#self.game_select,
             Screen.SETTINGS: self.settings_screen,
             Screen.CAMERA_CALIBRATION: DummyScreen("Kalibracja Kamery", self.change_screen),
             Screen.DEMO_MODE: DummyScreen("Tryb Demonstracyjny", self.change_screen),
