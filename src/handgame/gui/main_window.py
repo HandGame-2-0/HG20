@@ -99,8 +99,11 @@ class MainWindow(QMainWindow):
 
         self._register_screens()
 
+        self._history = []
+        self._currentPage: str | None = None
+
         self.ui.settingsButton.clicked.connect(lambda: self.change_screen(Screen.SETTINGS))
-        self.ui.backButton.clicked.connect(lambda: self.change_screen(Screen.MAIN_MENU))
+        self.ui.backButton.clicked.connect(lambda: self.goBack())
         # Add screens to router
         
 
@@ -160,6 +163,14 @@ class MainWindow(QMainWindow):
             self.settings_screen.ui.fullScreenCheckBox.setChecked(True) 
         else:
             super().keyPressEvent(event)
+
+    def goBack(self) -> None:
+        if not self._history:
+            return
+        prevId = self._history.pop()
+        self._currentPage = prevId
+        self.router.setCurrentIndex(prevId)
+
     # =====================================================================
     # CONTROL METHODS (ROUTER AND STATE)
     # =====================================================================
@@ -170,6 +181,12 @@ class MainWindow(QMainWindow):
             self.settings_screen.setResolution(self.width(), self.height())
         logger.info(f"Przełączanie ekranu na: {screen.name}")
         self.router.setCurrentIndex(screen.value)
+        if screen.value == self._currentPage:
+            return
+        if self._currentPage is not None:
+            self._history.append(self._currentPage)
+        self._currentPage = screen.value
+
 
     @Slot()
     def emergency_reset(self):
