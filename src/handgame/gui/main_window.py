@@ -1,5 +1,5 @@
 import logging
-from enum import Enum, auto
+from handgame.gui.screen import Screen
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QStackedWidget, 
@@ -9,21 +9,12 @@ from PySide6.QtCore import Qt, Slot
 
 from handgame.gui.screens.settings import SettingWindow
 from handgame.gui.ui.ui_shell import Ui_MainWindow
+from handgame.gui.screens.main_menu import MainMenu
+from handgame.gui.screens.game_select import GameSelectWindow
 
 logger = logging.getLogger("HandGame2")
 
-# =====================================================================
-# 1. ENUM DEFINING AVAILABLE SCREENS (GUI-CORE-4)
-# =====================================================================
-class Screen(Enum):
-    MAIN_MENU = 0
-    GAME_SELECT = 1
-    SETTINGS = 2
-    CAMERA_CALIBRATION = 3
-    DEMO_MODE = 4
-    DEV_MODE = 5
-    RESULTS = 6
-    GAME_VIEW = 7
+
 
 
 # =====================================================================
@@ -109,6 +100,7 @@ class MainWindow(QMainWindow):
 
         self.settings_screen.resolutionChange.connect(self._on_resolution_change)
         self.settings_screen.fullScreenRequest.connect(self._on_fullscreen_request)
+        self.main_menu_screen.requestPage.connect(self.change_screen)
         # Set start screen
         self.change_screen(Screen.MAIN_MENU)
 
@@ -118,10 +110,12 @@ class MainWindow(QMainWindow):
         
         # Kamil will wire in his real classes here:
         # e.g. self.main_menu = MainMenu(router_callback=self.change_screen)
+        self.main_menu_screen = MainMenu()
         self.settings_screen = SettingWindow()
+        self.game_select = GameSelectWindow()
         self.screens = {
-            Screen.MAIN_MENU: DummyScreen("Menu Główne", self.change_screen),
-            Screen.GAME_SELECT: DummyScreen("Wybór Gry", self.change_screen),
+            Screen.MAIN_MENU: self.main_menu_screen,
+            Screen.GAME_SELECT: self.game_select,
             Screen.SETTINGS: self.settings_screen,
             Screen.CAMERA_CALIBRATION: DummyScreen("Kalibracja Kamery", self.change_screen),
             Screen.DEMO_MODE: DummyScreen("Tryb Demonstracyjny", self.change_screen),
