@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class CameraWorkerHandle(QObject):
-    """Proxy living in the main/manager thread. Signals are forwarded to the worker's QThread via QueuedConnection."""
+    """
+    A proxy running in the main/manager thread.
+    Signals are safely passed to the worker in its QThread via QueuedConnection.
+    """
 
     start_requested = Signal()
     stop_requested = Signal()
@@ -31,7 +34,7 @@ class CameraRuntime:
 
 
 class CameraManager(QObject):
-    """Manages camera worker lifecycle."""
+    """Manages the lifecycle of camera workers."""
 
     frame_ready = Signal(object)  # FramePacket
     camera_status_changed = Signal(object)  # CameraStatusEvent
@@ -48,22 +51,23 @@ class CameraManager(QObject):
             return
 
         worker = MockCameraWorker(camera_id, player_id)
-        # No parent: lifecycle fully controlled via finished -> deleteLater below.
-        # QThread(self) would create DOUBLE ownership (C++ parent cascade vs a
-        # separately queued deleteLater on the same object) - risk of double-free
-        # if CameraManager is destroyed before the thread's own event loop cleans up.
+        # Parentless: life cycle fully controlled by finished -> deleteLater
+        # below. QThread(self) would create a double ownership (C++ parent cascade
+        # versus a separately queued `deleteLater` on the same object) – a potential
+        # double-free if the `CameraManager` is destroyed before the thread has time to
+        # clean up via its own event loop.
         thread = QThread()
         handle = CameraWorkerHandle()
 
         worker.moveToThread(thread)
 
-        # Manager -> worker: always QueuedConnection via proxy handle.
+        # Manager -> worker: always use a QueuedConnection via the proxy handle.
         handle.start_requested.connect(worker.start_stream, Qt.ConnectionType.QueuedConnection)
         handle.stop_requested.connect(worker.stop_stream, Qt.ConnectionType.QueuedConnection)
         handle.restart_requested.connect(worker.restart_stream, Qt.ConnectionType.QueuedConnection)
         handle.force_error_requested.connect(worker.force_error, Qt.ConnectionType.QueuedConnection)
 
-        # Thread lifecycle.
+        # The life cycle of a thread.
         thread.started.connect(handle.start_requested, Qt.ConnectionType.QueuedConnection)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
@@ -74,7 +78,7 @@ class CameraManager(QObject):
         worker.status_changed.connect(self._on_worker_status_changed)
         worker.error_occurred.connect(self.error_occurred)
 
-        # Clean up only once QThread has actually stopped.
+        # Clean up only once the QThread has actually stopped.
         thread.finished.connect(lambda camera_id=camera_id: self._cleanup_runtime(camera_id))
 
         self._runtimes[camera_id] = CameraRuntime(thread=thread, worker=worker, handle=handle)
@@ -83,8 +87,10 @@ class CameraManager(QObject):
         thread.start()
 
     def stop_camera(self, camera_id: CameraId) -> None:
-        """Requests worker stop. Does not remove QThread/worker refs here -
-        cleanup happens in _cleanup_runtime after thread.finished."""
+        """
+        It asks the worker to stop. It does not remove references to QThread or the worker here.
+        Clean-up will take place in _cleanup_runtime after thread.finished.
+        """
         runtime = self._runtimes.get(camera_id)
         if runtime is None:
             return
@@ -104,7 +110,7 @@ class CameraManager(QObject):
     def force_camera_error(
         self, camera_id: CameraId, message: str = "Simulated camera error"
     ) -> None:
-        """Test-only: forces the mock camera worker into CameraState.ERROR."""
+        """Test-only helper: forces the mock camera worker into CameraState.ERROR."""
         runtime = self._runtimes.get(camera_id)
         if runtime is None:
             return
@@ -119,13 +125,13 @@ class CameraManager(QObject):
         self.camera_status_changed.emit(event)
 
     def _cleanup_runtime(self, camera_id: CameraId) -> None:
-        """Called only after thread.finished - QThread is guaranteed stopped."""
+        """Called only after thread.finished - the QThread is guaranteed to no longer be running."""
         logger.info("Camera thread stopped for %s", camera_id)
         self._runtimes.pop(camera_id, None)
         self._states[camera_id] = CameraState.DISCONNECTED
 
     def shutdown(self, timeout_ms: int = 3_000) -> None:
-        """Safe shutdown before app exit. Waits for threads to actually stop."""
+        """Safe termination before exiting the application. Waits for actual thread termination."""
         camera_ids = list(self._runtimes.keys())
 
         for camera_id in camera_ids:
@@ -137,12 +143,12 @@ class CameraManager(QObject):
                 continue
             if not wait_for_thread_stopped(runtime.thread, timeout_ms):
                 logger.error("Camera thread did not stop in %s ms: %s", timeout_ms, camera_id)
-                # Emergency event-loop exit, without thread.terminate().
+                # Emergency exit from event loop, without thread.terminate().
                 runtime.thread.quit()
                 runtime.thread.wait(1_000)
 
-        # In tests without a full Qt event loop, finished may not have
-        # triggered _cleanup_runtime yet.
+        # In case of tests without a full Qt event loop, finished may not have time to
+        # call _cleanup_runtime.
         for camera_id in list(self._runtimes.keys()):
             runtime = self._runtimes[camera_id]
             if not runtime.thread.isRunning():

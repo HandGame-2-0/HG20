@@ -1,17 +1,16 @@
-import sys
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
-import traceback
 
-from PySide6.QtWidgets import QApplication, QMessageBox, QMainWindow
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox
 
-# Real imports (uncomment once ready):
-from handgame.gui.main_window import MainWindow
 from handgame.gui.integration_controller import GUIIntegrationController
+from handgame.gui.main_window import MainWindow
+
 
 def setup_logging() -> logging.Logger:
-    """Set up global logging with rotating file handler (avoids filling storage, e.g. RPi SD card)."""
+    """Set up global logging with a rotating file handler (keeps storage bounded, e.g. RPi SD)."""
     logger = logging.getLogger("HandGame2")
     logger.setLevel(logging.DEBUG)
 
@@ -38,12 +37,14 @@ def setup_logging() -> logging.Logger:
 def global_exception_hook(exc_type, exc_value, exc_traceback):
     """Global exception hook."""
     logger = logging.getLogger("HandGame2")
-    
+
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    logger.critical("Nieobsłużony wyjątek krytyczny!", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.critical(
+        "Nieobsłużony wyjątek krytyczny!", exc_info=(exc_type, exc_value, exc_traceback)
+    )
 
     if QApplication.instance():
         msg_box = QMessageBox()
@@ -96,7 +97,7 @@ def main():
         # controller.prepare_game("PUZZLE", 1)
 
         logger.info("Aplikacja gotowa, wchodzenie w główną pętlę zdarzeń (Event Loop).")
-        
+
         # 6. Blocking app event loop
         exit_code = app.exec()
         logger.info(f"Aplikacja zakończyła działanie z kodem wyjścia: {exit_code}")

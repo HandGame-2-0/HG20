@@ -33,11 +33,13 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+extend-exclude = "src/handgame/gui/ui/ui_.*\\.py"
 
 [tool.isort]
 profile = "black"
 line_length = 100
 src_paths = ["src", "tests"]
+extend_skip_glob = ["src/handgame/gui/ui/ui_*.py"]
 
 [tool.ruff]
 line-length = 100
@@ -47,6 +49,13 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N"]
 ignore = ["E203"]
+
+[tool.ruff.lint.per-file-ignores]
+# pyside6-uic output - do not hand-edit, regenerate from the matching .ui file.
+"src/handgame/gui/ui/ui_*.py" = ["E501", "F401", "N", "I001", "UP"]
+# Kamil's shell/settings API keeps its camelCase signal + method names.
+"src/handgame/gui/main_window.py" = ["N802"]
+"src/handgame/gui/screens/settings.py" = ["N802", "N815"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -68,4 +77,4 @@ warn_return_any = false
 pretty = true
 mypy_path = "src"
 packages = ["handgame"]
-exclude = ["tests"]
+exclude = ["tests", "src/handgame/gui/ui/"]

@@ -1,11 +1,12 @@
 import logging
 from handgame.gui.screen import Screen
+from enum import Enum
 
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QStackedWidget, 
-    QMessageBox, QLabel, QPushButton, QHBoxLayout
-)
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import QRect, Qt, Slot
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
+
+from handgame.gui.screens.settings import SettingWindow
+from handgame.gui.ui.ui_shell import Ui_MainWindow
 
 from handgame.gui.screens.settings import SettingWindow
 from handgame.gui.ui.ui_shell import Ui_MainWindow
@@ -15,6 +16,18 @@ from handgame.gui.screens.game_select import GameSelectWindow
 logger = logging.getLogger("HandGame2")
 
 
+# =====================================================================
+# 1. ENUM DEFINING AVAILABLE SCREENS (GUI-CORE-4)
+# =====================================================================
+class Screen(Enum):
+    MAIN_MENU = 0
+    GAME_SELECT = 1
+    SETTINGS = 2
+    CAMERA_CALIBRATION = 3
+    DEMO_MODE = 4
+    DEV_MODE = 5
+    RESULTS = 6
+    GAME_VIEW = 7
 
 
 # =====================================================================
@@ -24,18 +37,19 @@ logger = logging.getLogger("HandGame2")
 # (e.g. from gui.views.main_menu import MainMenu) and swap in.
 class DummyScreen(QWidget):
     """Placeholder view for testing the router before real screens exist."""
+
     def __init__(self, name: str, router_callback):
         super().__init__()
         layout = QVBoxLayout(self)
-        
+
         label = QLabel(f"To jest ekran: {name}")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("font-size: 24px; font-weight: bold;")
-        
+
         btn_back = QPushButton("Wróć do Menu Głównego")
         btn_back.setFixedSize(250, 50)
         btn_back.clicked.connect(lambda: router_callback(Screen.MAIN_MENU))
-        
+
         layout.addWidget(label)
         layout.addWidget(btn_back, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -47,7 +61,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("HandGame 2.0")
-        
+
         # Target RPi resolution / optimization
         self.resize(1024, 768)
         self.setMinimumSize(800, 600)
@@ -57,7 +71,7 @@ class MainWindow(QMainWindow):
 
         # 2. Init UI (layouts and router)
         self._init_ui()
-        
+
         logger.info("MainWindow zostało pomyślnie zainicjalizowane.")
 
     def _init_core_modules(self):
@@ -66,7 +80,7 @@ class MainWindow(QMainWindow):
         # TODO: self.camera_manager = CameraManager()
         # TODO: self.inference_worker = InferenceWorker()
         # TODO: self.session_manager = SessionManager()
-        
+
         # Placeholders for safe_teardown
         self.camera_manager = None
         self.inference_worker = None
@@ -105,9 +119,12 @@ class MainWindow(QMainWindow):
         self.change_screen(Screen.MAIN_MENU)
 
     def _register_screens(self):
-        """Registers all views in the QStackedWidget (GUI-CORE-4). Order must match the Screen enum values."""
+        """Registers all views in the QStackedWidget (GUI-CORE-4).
+
+        Order must match the Screen enum values.
+        """
         logger.debug("Rejestracja ekranów w routerze...")
-        
+
         # Kamil will wire in his real classes here:
         # e.g. self.main_menu = MainMenu(router_callback=self.change_screen)
         self.main_menu_screen = MainMenu()
@@ -116,6 +133,10 @@ class MainWindow(QMainWindow):
         self.screens = {
             Screen.MAIN_MENU: self.main_menu_screen,
             Screen.GAME_SELECT:  DummyScreen("Wybór gry", self.change_screen),#self.game_select,
+        self.settings_screen = SettingWindow()
+        self.screens = {
+            Screen.MAIN_MENU: DummyScreen("Menu Główne", self.change_screen),
+            Screen.GAME_SELECT: DummyScreen("Wybór Gry", self.change_screen),
             Screen.SETTINGS: self.settings_screen,
             Screen.CAMERA_CALIBRATION: DummyScreen("Kalibracja Kamery", self.change_screen),
             Screen.DEMO_MODE: DummyScreen("Tryb Demonstracyjny", self.change_screen),
@@ -123,7 +144,7 @@ class MainWindow(QMainWindow):
             Screen.RESULTS: DummyScreen("Wyniki Ostatniej Gry", self.change_screen),
             Screen.GAME_VIEW: DummyScreen("Widok Minigry", self.change_screen),
         }
-        
+
         # Add widgets to router in correct order
         for screen_enum in Screen:
             if screen_enum in self.screens:
@@ -165,6 +186,37 @@ class MainWindow(QMainWindow):
         self._currentPage = prevId
         self.router.setCurrentIndex(prevId)
 
+    def _keepOnScreen(self) -> None:
+        screen = self.screen()
+        available = screen.availableGeometry()
+        frame = self.frameGeometry()
+
+        x = frame.x()
+        y = frame.y()
+
+        if frame.right() > available.right():
+            x = available.right() - frame.width() + 1
+        if frame.bottom() > available.bottom():
+            y = available.bottom() - frame.height() + 1
+        if x < available.left():
+            x = available.left()
+        if y < available.top():
+            y = available.top()
+        self.move(x, y)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_F11 and self.isFullScreen():
+            self.showNormal()
+            if self.windowGeometry is not None:
+                self.setGeometry(self.windowGeometry)
+            self.settings_screen.ui.fullScreenCheckBox.setChecked(False)
+        elif event.key() == Qt.Key.Key_F11 and not self.isFullScreen():
+            self.windowGeometry = self.geometry()
+            self.showFullScreen()
+            self.settings_screen.ui.fullScreenCheckBox.setChecked(True)
+        else:
+            super().keyPressEvent(event)
+
     # =====================================================================
     # CONTROL METHODS (ROUTER AND STATE)
     # =====================================================================
@@ -184,17 +236,20 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def emergency_reset(self):
-        """Emergency return handler (GUI-CORE-9 / DEMO-4); stops current game/camera and returns to menu."""
+        """Emergency return handler (GUI-CORE-9 / DEMO-4).
+
+        Stops current game/camera and returns to menu.
+        """
         logger.warning("Wymuszono awaryjny reset sesji! Powrót do menu...")
-        
+
         # TODO: self.session_manager.reset()
         # TODO: if self.inference_worker.isRunning(): self.inference_worker.stop()
-        
+
         self.change_screen(Screen.MAIN_MENU)
         QMessageBox.warning(
-            self, 
-            "Awaryjny Reset", 
-            "Sesja została awaryjnie zresetowana.\nPowrót do Menu Głównego."
+            self,
+            "Awaryjny Reset",
+            "Sesja została awaryjnie zresetowana.\nPowrót do Menu Głównego.",
         )
 
     # =====================================================================
@@ -202,19 +257,25 @@ class MainWindow(QMainWindow):
     # =====================================================================
     @Slot()
     def safe_teardown(self):
-        """Stops all workers and releases camera USB ports. Called by app.aboutToQuit from main.py."""
+        """Stops all workers and releases camera USB ports.
+
+        Called by app.aboutToQuit from main.py.
+        """
         logger.info("Inicjowanie procedury bezpiecznego zamykania z MainWindow (Teardown)...")
-        
+
         if self.inference_worker:
             logger.info("Zatrzymywanie workera AI...")
             # self.inference_worker.stop()
             # self.inference_worker.wait(2000)
-            
+
         if self.camera_manager:
             logger.info("Zwalnianie dostępu do kamer USB...")
             # self.camera_manager.release_all()
             
         logger.info("Wszystkie zasoby zostały prawidłowo zwolnione.")
+
+        logger.info("Wszystkie zasoby zostały prawidłowo zwolnione.")
+
     # =====================================================================
     # SETTINGS
     # =====================================================================
@@ -233,6 +294,18 @@ class MainWindow(QMainWindow):
         self.resize(width, height)
         self.windowGeometry = self.geometry()
         self._keepOnScreen()
+    @Slot()
+    def _on_fullscreen_request(self):
+        self.showFullScreen()
+        height_diff = frame.height() - self.height()
+        width_diff = frame.width() - self.width()
+        width = min(width, available.width() - width_diff)
+        height = min(height, available.height() - height_diff)
+
+        self.resize(width, height)
+        self.windowGeometry = self.geometry()
+        self._keepOnScreen()
+
     @Slot()
     def _on_fullscreen_request(self):
         self.showFullScreen()
