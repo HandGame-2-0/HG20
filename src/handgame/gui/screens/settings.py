@@ -1,6 +1,5 @@
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QWidget
-
+from PySide6.QtWidgets import QWidget, QPushButton, QSpinBox
 from handgame.gui.ui.ui_settings import Ui_Form
 
 RESOLUTIONS = [

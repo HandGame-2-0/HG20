@@ -1,4 +1,5 @@
 import logging
+from handgame.gui.screen import Screen
 from enum import Enum
 
 from PySide6.QtCore import QRect, Qt, Slot
@@ -6,6 +7,11 @@ from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QPushButton, QVB
 
 from handgame.gui.screens.settings import SettingWindow
 from handgame.gui.ui.ui_shell import Ui_MainWindow
+
+from handgame.gui.screens.settings import SettingWindow
+from handgame.gui.ui.ui_shell import Ui_MainWindow
+from handgame.gui.screens.main_menu import MainMenu
+from handgame.gui.screens.game_select import GameSelectWindow
 
 logger = logging.getLogger("HandGame2")
 
@@ -59,7 +65,7 @@ class MainWindow(QMainWindow):
         # Target RPi resolution / optimization
         self.resize(1024, 768)
         self.setMinimumSize(800, 600)
-
+        
         # 1. Init core modules (GUI-CORE-8)
         self._init_core_modules()
 
@@ -81,29 +87,34 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self):
         """Builds the main app shell (QStackedWidget)."""
-        # Central widget + top bar come from the generated shell UI.
+        # Central widget (base for everything)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.windowGeometry: QRect | None = None
+        self.windowGeometry = None
         self.router = self.ui.stackedWidget
-
         screen = self.screen()
         available = screen.availableGeometry()
 
-        start_width = min(1280, available.width())
-        start_height = min(720, available.height())
 
-        self.resize(start_width, start_height)
-        self.move(available.center() - self.frameGeometry().center())
+        startWidth = min(1280, available.width())
+        startHeight = min(720, available.height())
+
+        self.resize(startWidth, startHeight)
+        self.move(available.center()-self.frameGeometry().center())
 
         self._register_screens()
 
+        self._history = []
+        self._currentPage: str | None = None
+
         self.ui.settingsButton.clicked.connect(lambda: self.change_screen(Screen.SETTINGS))
-        self.ui.backButton.clicked.connect(lambda: self.change_screen(Screen.MAIN_MENU))
+        self.ui.backButton.clicked.connect(lambda: self.goBack())
+        # Add screens to router
+        
 
         self.settings_screen.resolutionChange.connect(self._on_resolution_change)
         self.settings_screen.fullScreenRequest.connect(self._on_fullscreen_request)
-
+        self.main_menu_screen.requestPage.connect(self.change_screen)
         # Set start screen
         self.change_screen(Screen.MAIN_MENU)
 
@@ -116,6 +127,12 @@ class MainWindow(QMainWindow):
 
         # Kamil will wire in his real classes here:
         # e.g. self.main_menu = MainMenu(router_callback=self.change_screen)
+        self.main_menu_screen = MainMenu()
+        self.settings_screen = SettingWindow()
+        self.game_select = GameSelectWindow()
+        self.screens = {
+            Screen.MAIN_MENU: self.main_menu_screen,
+            Screen.GAME_SELECT:  DummyScreen("Wybór gry", self.change_screen),#self.game_select,
         self.settings_screen = SettingWindow()
         self.screens = {
             Screen.MAIN_MENU: DummyScreen("Menu Główne", self.change_screen),
@@ -132,6 +149,42 @@ class MainWindow(QMainWindow):
         for screen_enum in Screen:
             if screen_enum in self.screens:
                 self.router.addWidget(self.screens[screen_enum])
+    def _keepOnScreen(self) -> None:
+        screen = self.screen()
+        available = screen.availableGeometry()
+        frame = self.frameGeometry()
+
+        x=frame.x()
+        y=frame.y()
+
+        if frame.right()>available.right():
+            x=available.right() - frame.width() + 1
+        if frame.bottom() > available.bottom():
+            y = available.bottom() - frame.height() + 1
+        if x < available.left():
+            x = available.left()
+        if y < available.top():
+            y = available.top()
+        self.move(x,y)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_F11 and self.isFullScreen():
+            self.showNormal()
+            self.setGeometry(self.windowGeometry)
+            self.settings_screen.ui.fullScreenCheckBox.setChecked(False) 
+        elif event.key() == Qt.Key.Key_F11 and not self.isFullScreen():
+            self.windowGeometry = self.geometry()
+            self.showFullScreen()
+            self.settings_screen.ui.fullScreenCheckBox.setChecked(True) 
+        else:
+            super().keyPressEvent(event)
+
+    def goBack(self) -> None:
+        if not self._history:
+            return
+        prevId = self._history.pop()
+        self._currentPage = prevId
+        self.router.setCurrentIndex(prevId)
 
     def _keepOnScreen(self) -> None:
         screen = self.screen()
@@ -174,6 +227,12 @@ class MainWindow(QMainWindow):
             self.settings_screen.setResolution(self.width(), self.height())
         logger.info(f"Przełączanie ekranu na: {screen.name}")
         self.router.setCurrentIndex(screen.value)
+        if screen.value == self._currentPage:
+            return
+        if self._currentPage is not None:
+            self._history.append(self._currentPage)
+        self._currentPage = screen.value
+
 
     @Slot()
     def emergency_reset(self):
@@ -212,6 +271,8 @@ class MainWindow(QMainWindow):
         if self.camera_manager:
             logger.info("Zwalnianie dostępu do kamer USB...")
             # self.camera_manager.release_all()
+            
+        logger.info("Wszystkie zasoby zostały prawidłowo zwolnione.")
 
         logger.info("Wszystkie zasoby zostały prawidłowo zwolnione.")
 
@@ -225,6 +286,17 @@ class MainWindow(QMainWindow):
         screen = self.screen()
         available = screen.availableGeometry()
         frame = self.frameGeometry()
+        heightDiff = frame.height() - self.height()
+        widthDiff = frame.width() - self.width()
+        width = min(width, available.width()-widthDiff)
+        height = min(height, available.height()-heightDiff)
+        
+        self.resize(width, height)
+        self.windowGeometry = self.geometry()
+        self._keepOnScreen()
+    @Slot()
+    def _on_fullscreen_request(self):
+        self.showFullScreen()
         height_diff = frame.height() - self.height()
         width_diff = frame.width() - self.width()
         width = min(width, available.width() - width_diff)

@@ -72,6 +72,17 @@ def main():
         controller = GUIIntegrationController()
 
         # 4. Init main window (frontend)
+        class DummyMainWindow(QMainWindow):
+            def __init__(self, ctrl):
+                super().__init__()
+                self.controller = ctrl
+                self.setWindowTitle("HandGame 2.0 - Shell")
+                self.resize(1024, 768)
+                
+            def safe_teardown(self):
+                logger = logging.getLogger("HandGame2")
+                logger.info("Zamykanie okna GUI...")
+
         window = MainWindow()
         window.show()
 
