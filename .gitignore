@@ -1,6 +1,10 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
 *$py.class
 
 # C extensions
@@ -45,6 +49,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+handgame_runtime.log*
 
 # Local configuration / secrets
 .env
@@ -98,6 +103,9 @@ artifacts/
 *.pth
 *.h5
 *.tflite
+*.pkl
+data/raw/
+*.pyc
 
 # Jupyter
 .ipynb_checkpoints/
