@@ -17,20 +17,6 @@ logger = logging.getLogger("HandGame2")
 
 
 # =====================================================================
-# 1. ENUM DEFINING AVAILABLE SCREENS (GUI-CORE-4)
-# =====================================================================
-class Screen(Enum):
-    MAIN_MENU = 0
-    GAME_SELECT = 1
-    SETTINGS = 2
-    CAMERA_CALIBRATION = 3
-    DEMO_MODE = 4
-    DEV_MODE = 5
-    RESULTS = 6
-    GAME_VIEW = 7
-
-
-# =====================================================================
 # 2. VIEW PLACEHOLDERS (to be replaced by Kamil's and Oskar's final classes)
 # =====================================================================
 # Note: once real screens exist, import them here
@@ -133,10 +119,6 @@ class MainWindow(QMainWindow):
         self.screens = {
             Screen.MAIN_MENU: self.main_menu_screen,
             Screen.GAME_SELECT:  DummyScreen("Wybór gry", self.change_screen),#self.game_select,
-        self.settings_screen = SettingWindow()
-        self.screens = {
-            Screen.MAIN_MENU: DummyScreen("Menu Główne", self.change_screen),
-            Screen.GAME_SELECT: DummyScreen("Wybór Gry", self.change_screen),
             Screen.SETTINGS: self.settings_screen,
             Screen.CAMERA_CALIBRATION: DummyScreen("Kalibracja Kamery", self.change_screen),
             Screen.DEMO_MODE: DummyScreen("Tryb Demonstracyjny", self.change_screen),
@@ -291,17 +273,6 @@ class MainWindow(QMainWindow):
         width = min(width, available.width()-widthDiff)
         height = min(height, available.height()-heightDiff)
         
-        self.resize(width, height)
-        self.windowGeometry = self.geometry()
-        self._keepOnScreen()
-    @Slot()
-    def _on_fullscreen_request(self):
-        self.showFullScreen()
-        height_diff = frame.height() - self.height()
-        width_diff = frame.width() - self.width()
-        width = min(width, available.width() - width_diff)
-        height = min(height, available.height() - height_diff)
-
         self.resize(width, height)
         self.windowGeometry = self.geometry()
         self._keepOnScreen()
