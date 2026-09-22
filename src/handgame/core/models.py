@@ -68,3 +68,20 @@ class GameMode(Enum):
     MULTIPLAYER = auto()
     DEMO = auto()
     DEVELOPER = auto()
+
+
+class VirtualButton(Enum):
+    """Gamepad-style control vocabulary that a gesture can resolve to.
+
+    Stable across all minigames and sign vocabularies - see
+    ``games/control_mapping.py`` and ``BaseGame.CONTROL_MAP``.
+    """
+
+    UP = auto()
+    DOWN = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    CONFIRM = auto()
+    CANCEL = auto()
+    ACTION_1 = auto()
+    ACTION_2 = auto()

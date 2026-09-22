@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Any
 from uuid import UUID
 
-from handgame.core.models import CameraId, GameMode, PlayerId
+from handgame.core.models import CameraId, GameMode, PlayerId, VirtualButton
 
 
 @dataclass(frozen=True)
@@ -92,6 +92,7 @@ class GameContext:
     player_camera_mapping: Mapping[PlayerId, CameraId]
     selected_algorithms: Mapping[CameraId, str]
     config: Mapping[str, Any] = field(default_factory=dict)
+    control_mapping: Mapping[str, VirtualButton] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -101,3 +102,6 @@ class GameContext:
             self, "selected_algorithms", MappingProxyType(dict(self.selected_algorithms))
         )
         object.__setattr__(self, "config", MappingProxyType(dict(self.config)))
+        object.__setattr__(
+            self, "control_mapping", MappingProxyType(dict(self.control_mapping))
+        )

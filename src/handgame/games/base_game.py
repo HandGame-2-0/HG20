@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import ClassVar, Protocol
 
-from handgame.core.events import GameActionEvent, GestureRecognitionEvent
-from handgame.core.models import GameState, PlayerId
+from handgame.core.events import ControlEvent, GameActionEvent, GestureRecognitionEvent
+from handgame.core.models import GameState, PlayerId, VirtualButton
+from handgame.games.control_mapping import resolve_virtual_button
 from handgame.games.game_context import GameContext, PlayerGameState
 from handgame.games.game_result import GameEndReason, GameResult
 
@@ -48,6 +50,8 @@ class GameEventSink(Protocol):
 
     def on_action_ready(self, action: GameActionEvent) -> None: ...
 
+    def on_control_event(self, event: ControlEvent) -> None: ...
+
     def on_finished(self, result: GameResult) -> None: ...
 
     def on_error(self, message: str, recoverable: bool) -> None: ...
@@ -55,6 +59,10 @@ class GameEventSink(Protocol):
 
 class BaseGame(ABC):
     """Abstract base class for all mini-games. Does not import QtWidgets or any Qt modules."""
+
+    # Per-game sign -> virtual button vocabulary. Empty by default (opt-in).
+    # GameContext.control_mapping, if non-empty, overrides this wholesale.
+    CONTROL_MAP: ClassVar[Mapping[str, VirtualButton]] = {}
 
     def __init__(self, event_sink: GameEventSink) -> None:
         self._sink = event_sink
@@ -135,6 +143,16 @@ class BaseGame(ABC):
         updated = replace(current, hint_count=current.hint_count + 1)
         self._players[player_id] = updated
         self._sink.on_hint_requested(player_id, self.get_expected_sign(player_id) or "")
+
+    def _resolve_button(self, event: GestureRecognitionEvent) -> VirtualButton | None:
+        """Opt-in: maps event.recognized_sign to a VirtualButton.
+
+        GameContext.control_mapping, if non-empty, wins over CONTROL_MAP; an
+        empty mapping (the default) always resolves to None.
+        """
+        context = self._context
+        mapping = (context.control_mapping if context else None) or self.CONTROL_MAP
+        return resolve_virtual_button(event.recognized_sign, mapping)
 
     def get_state(self) -> GameState:
         return self._state

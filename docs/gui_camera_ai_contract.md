@@ -18,6 +18,7 @@ GUI (widgets)
        -> SessionManager               (session state machine)
             -> GameController          (owns the active BaseGame instance)
                  -> BaseGame subclass  (pure Python, no Qt)
+                      -> optional GameEventSink.on_control_event -> ui_control_event
        -> StatsSink                    (in-memory now, SQLite-ready seam)
 ```
 
@@ -41,6 +42,7 @@ elsewhere.
 | `SessionStatusEvent` | `session_id`, `previous_state`, `current_state`, `message?` | |
 | `ApplicationErrorEvent` | `source: SourceType`, `severity: Severity`, `code`, `message`, `recoverable`, `camera_id?`, `player_id?`, `exception_type?` | The one uniform error channel every manager funnels into. |
 | `GameActionEvent` | `session_id`, `player_id`, `action_type`, `payload`, `timestamp` | `payload` is frozen (`MappingProxyType`) in `__post_init__` - construct it once, never mutate after. |
+| `ControlEvent` | `session_id`, `player_id`, `button: VirtualButton`, `source_event_id`, `recognized_sign?`, `confidence?` | Optional, opt-in per minigame; resolved from `GestureRecognitionEvent.recognized_sign` via `BaseGame._resolve_button` (`docs/game_framework.md` "Virtual buttons"). Not persisted to `StatsSink` by default. |
 | `SessionMetricsEvent` | `session_id`, `game_id`, `difficulty_level` (1-5), `player_id?`, `score?`, `mistakes?`, `hint_count?`, `reaction_time_ms?` | Never carries frame/image data - it structurally can't. |
 
 ## States
@@ -207,6 +209,9 @@ or fixture teardown (see `tests/conftest.py`'s `controller` fixture).
 11. The minigame emits `GameActionEvent` (correct/incorrect gesture, score
     change, etc.) via `GameEventSink.on_action_ready` -> `GameController` ->
     `SessionManager.game_action_ready` -> `GUIIntegrationController.ui_game_action`.
+    A minigame that opts into virtual buttons may also emit `ControlEvent`
+    via `GameEventSink.on_control_event` -> `GameController.control_event_ready`
+    -> `SessionManager.control_event_ready` -> `GUIIntegrationController.ui_control_event`.
 12. `SessionManager` re-pushes expected signs (step 7) for the next gesture.
 13. `StatsSink.record_metrics()` / `record_gesture()` save only the fields
     listed in the events table above - no frame data, ever.

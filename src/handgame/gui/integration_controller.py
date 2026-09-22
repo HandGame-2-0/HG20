@@ -27,6 +27,7 @@ class GUIIntegrationController(QObject):
     ui_inference_status_changed = Signal(object)  # InferenceStatusEvent
     ui_gesture_result = Signal(object)  # GestureRecognitionEvent
     ui_game_action = Signal(GameActionEvent)
+    ui_control_event = Signal(object)  # ControlEvent
     ui_game_finished = Signal(object)  # GameResult
     ui_error_occurred = Signal(ApplicationErrorEvent)
 
@@ -68,6 +69,7 @@ class GUIIntegrationController(QObject):
         self.inference_mgr.gesture_recognized.connect(self.ui_gesture_result)
         self.session_mgr.session_status_changed.connect(self.ui_session_status_changed)
         self.session_mgr.game_action_ready.connect(self.ui_game_action)
+        self.session_mgr.control_event_ready.connect(self.ui_control_event)
         self.session_mgr.game_finished.connect(self.ui_game_finished)
 
         # Error aggregation (GUI should show a QMessageBox on receipt)
