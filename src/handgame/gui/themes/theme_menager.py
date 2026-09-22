@@ -13,36 +13,7 @@ from handgame.gui.themes.palettes import (
 )
 logger = logging.getLogger("HandGame2")
 _SETTINGS_KEY = "ui/theme"
-_DEFAULT_TEMPLATE = """\
-QWidget {
-    background-color: $background;
-    color: $text;
-    font-family: "$font_family";
-    font-size: ${font_size_px}px;
-}
-QMainWindow, QStackedWidget {
-    background-color: $background;
-}
-QPushButton {
-    background-color: $accent;
-    color: $accent_text;
-    border: 1px solid $border;
-    padding: 6px 12px;
-}
-QPushButton:hover {
-    background-color: $surface;
-    color: $text;
-}
-QComboBox, QSpinBox, QLineEdit, QCheckBox {
-    background-color: $surface;
-    color: $text;
-    border: 1px solid $border;
-}
-QLabel {
-    color: $text;
-    background-color: transparent;
-}
-"""
+
 class ThemeManager(QObject):
     theme_changed = Signal(object)  # ThemeId
 
@@ -93,10 +64,11 @@ class ThemeManager(QObject):
         except ValueError:
             logger.warning("Nieznany motyw %r, używam %s", raw, DEFAULT_THEME.value)
             return DEFAULT_THEME
+    def _default_qss_path(self) -> Path:
+        return Path(__file__).resolve().parent / "assets" / "base.qss"
 
     def _resolve_template(self, template: str | None, template_path: Path | None) -> str:
         if template is not None:
             return template
-        if template_path is not None:
-            return template_path.read_text(encoding="utf-8")
-        return _DEFAULT_TEMPLATE
+        path = template_path or self._default_qss_path()
+        return path.read_text(encoding="utf-8")
