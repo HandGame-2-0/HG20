@@ -3,10 +3,11 @@ import sys
 from logging.handlers import RotatingFileHandler
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 
 from handgame.gui.integration_controller import GUIIntegrationController
 from handgame.gui.main_window import MainWindow
+from handgame.gui.themes.theme_menager import ThemeManager
 
 
 def setup_logging() -> logging.Logger:
@@ -66,11 +67,13 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("HandGame 2.0")
     app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
+    app.setStyle(QStyleFactory.create("Fusion"))
 
     try:
         # 3. Init app "brain" (backend/contract)
         controller = GUIIntegrationController()
-
+        themeManager = ThemeManager()
+        themeManager.apply_saved()
         # 4. Init main window (frontend)
         # class DummyMainWindow(QMainWindow):
         #     def __init__(self, ctrl):
@@ -83,7 +86,7 @@ def main():
         #         logger = logging.getLogger("HandGame2")
         #         logger.info("Zamykanie okna GUI...")
 
-        window = MainWindow()
+        window = MainWindow(themeMng = themeManager)
         window.show()
 
         # 5. Wire up safe-shutdown contract
