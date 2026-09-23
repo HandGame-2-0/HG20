@@ -44,8 +44,9 @@ class DummyScreen(QWidget):
 # 3. MAIN APPLICATION WINDOW CLASS (GUI-CORE-3)
 # =====================================================================
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, themeMng = None):
         super().__init__()
+        self.themeManager = themeMng
         self.setWindowTitle("HandGame 2.0")
 
         # Target RPi resolution / optimization
@@ -100,6 +101,10 @@ class MainWindow(QMainWindow):
 
         self.settings_screen.resolutionChange.connect(self._on_resolution_change)
         self.settings_screen.fullScreenRequest.connect(self._on_fullscreen_request)
+        self.settings_screen.themeChange.connect(self._on_theme_change)
+        if self.themeManager is not None:
+            self.settings_screen.setTheme(self.themeManager.current_theme)
+
         self.main_menu_screen.requestPage.connect(self.change_screen)
         # Set start screen
         self.change_screen(Screen.MAIN_MENU)
@@ -168,37 +173,6 @@ class MainWindow(QMainWindow):
         self._currentPage = prevId
         self.router.setCurrentIndex(prevId)
 
-    def _keepOnScreen(self) -> None:
-        screen = self.screen()
-        available = screen.availableGeometry()
-        frame = self.frameGeometry()
-
-        x = frame.x()
-        y = frame.y()
-
-        if frame.right() > available.right():
-            x = available.right() - frame.width() + 1
-        if frame.bottom() > available.bottom():
-            y = available.bottom() - frame.height() + 1
-        if x < available.left():
-            x = available.left()
-        if y < available.top():
-            y = available.top()
-        self.move(x, y)
-
-    def keyPressEvent(self, event) -> None:
-        if event.key() == Qt.Key.Key_F11 and self.isFullScreen():
-            self.showNormal()
-            if self.windowGeometry is not None:
-                self.setGeometry(self.windowGeometry)
-            self.settings_screen.ui.fullScreenCheckBox.setChecked(False)
-        elif event.key() == Qt.Key.Key_F11 and not self.isFullScreen():
-            self.windowGeometry = self.geometry()
-            self.showFullScreen()
-            self.settings_screen.ui.fullScreenCheckBox.setChecked(True)
-        else:
-            super().keyPressEvent(event)
-
     # =====================================================================
     # CONTROL METHODS (ROUTER AND STATE)
     # =====================================================================
@@ -207,6 +181,8 @@ class MainWindow(QMainWindow):
         """Switches the currently displayed screen."""
         if screen is Screen.SETTINGS:
             self.settings_screen.setResolution(self.width(), self.height())
+            if self.themeManager is not None:
+                self.settings_screen.setTheme(self.themeManager.current_theme)
         logger.info(f"Przełączanie ekranu na: {screen.name}")
         self.router.setCurrentIndex(screen.value)
         if screen.value == self._currentPage:
@@ -280,3 +256,8 @@ class MainWindow(QMainWindow):
     @Slot()
     def _on_fullscreen_request(self):
         self.showFullScreen()
+
+    @Slot(object)
+    def _on_theme_change(self, theme_id):
+        if self.themeManager is not None:
+            self.themeManager.apply(theme_id)
