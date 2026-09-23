@@ -13,6 +13,7 @@ from .models import (
     SessionState,
     Severity,
     SourceType,
+    VirtualButton,
 )
 
 
@@ -108,6 +109,21 @@ class GameActionEvent:
     def __post_init__(self):
         # Payload frozen after creation - receiver can't mutate it.
         object.__setattr__(self, "payload", MappingProxyType(dict(self.payload)))
+
+
+@dataclass(frozen=True)
+class ControlEvent:
+    session_id: UUID
+    player_id: PlayerId
+    button: VirtualButton
+    source_event_id: UUID  # GestureRecognitionEvent.event_id this was resolved from
+    recognized_sign: str | None = None
+    confidence: float | None = None
+    timestamp: datetime = field(default_factory=utc_now)
+
+    def __post_init__(self):
+        if self.confidence is not None and not (0.0 <= self.confidence <= 1.0):
+            raise ValueError("Confidence musi być w przedziale 0.0 - 1.0")
 
 
 @dataclass(frozen=True)

@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 class SessionManager(QObject):
     session_status_changed = Signal(SessionStatusEvent)
     game_action_ready = Signal(object)  # GameActionEvent
+    control_event_ready = Signal(object)  # ControlEvent
     metrics_ready = Signal(object)  # SessionMetricsEvent
     game_finished = Signal(object)  # GameResult
     error_occurred = Signal(ApplicationErrorEvent)
@@ -56,6 +57,7 @@ class SessionManager(QObject):
 
         self._game_controller = GameController()
         self._game_controller.game_action_ready.connect(self.game_action_ready)
+        self._game_controller.control_event_ready.connect(self.control_event_ready)
         self._game_controller.metrics_ready.connect(self.metrics_ready)
         self._game_controller.game_finished.connect(self.game_finished)
         self._game_controller.game_error.connect(self.error_occurred)

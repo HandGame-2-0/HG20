@@ -15,6 +15,7 @@ from PySide6.QtCore import QObject, Signal
 
 from handgame.core.events import (
     ApplicationErrorEvent,
+    ControlEvent,
     GameActionEvent,
     GestureRecognitionEvent,
     SessionMetricsEvent,
@@ -37,6 +38,7 @@ class GameController(QObject):
     """Creates/drives the active minigame; sole SessionManager <-> BaseGame contact point."""
 
     game_action_ready = Signal(object)  # GameActionEvent
+    control_event_ready = Signal(object)  # ControlEvent
     metrics_ready = Signal(object)  # SessionMetricsEvent
     game_finished = Signal(object)  # GameResult
     game_error = Signal(object)  # ApplicationErrorEvent
@@ -124,6 +126,9 @@ class GameController(QObject):
 
     def on_action_ready(self, action: GameActionEvent) -> None:
         self.game_action_ready.emit(action)
+
+    def on_control_event(self, event: ControlEvent) -> None:
+        self.control_event_ready.emit(event)
 
     def on_finished(self, result: GameResult) -> None:
         self.game_finished.emit(result)

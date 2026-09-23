@@ -97,6 +97,9 @@ state bookkeeping:
 - `_finalize(reason)` - builds the `GameResult` (idempotent - calling it twice
   returns the same cached result), transitions to `FINISHED`/`ERROR`, and
   fires `on_finished`. Every minigame's `end()` should just call this.
+- `_resolve_button(event)` - opt-in translation of `event.recognized_sign`
+  into a `VirtualButton` via `CONTROL_MAP`/`GameContext.control_mapping` (see
+  "Virtual buttons" above). Returns `None` if unmapped.
 
 ### `GameEventSink`
 
@@ -109,9 +112,44 @@ class GameEventSink(Protocol):
     def on_score_changed(self, player_state: PlayerGameState) -> None: ...
     def on_hint_requested(self, player_id: PlayerId, hint: str) -> None: ...
     def on_action_ready(self, action: GameActionEvent) -> None: ...
+    def on_control_event(self, event: ControlEvent) -> None: ...
     def on_finished(self, result: GameResult) -> None: ...
     def on_error(self, message: str, recoverable: bool) -> None: ...
 ```
+
+## Virtual buttons
+
+`GestureRecognitionEvent.recognized_sign` is a raw, free-form AI prediction
+(a sign name string). Minigames that don't want to hardcode that vocabulary
+can translate it into a stable, cross-game `VirtualButton` (`core/models.py`:
+`UP`, `DOWN`, `LEFT`, `RIGHT`, `CONFIRM`, `CANCEL`, `ACTION_1`, `ACTION_2`) -
+a gamepad-style abstraction, entirely opt-in.
+
+Two data-only mapping sources, no code changes needed to add/change one:
+
+- `BaseGame.CONTROL_MAP: ClassVar[Mapping[str, VirtualButton]]` - per-game
+  default, empty (`{}`) unless a subclass sets it.
+- `GameContext.control_mapping: Mapping[str, VirtualButton]` - per-session
+  override. If non-empty, it **replaces `CONTROL_MAP` wholesale** for that
+  session (not a merge). Empty (the default) means "use the game's
+  `CONTROL_MAP`".
+
+`BaseGame._resolve_button(event) -> VirtualButton | None` (see "Helper
+methods for subclasses" below) resolves an event against whichever mapping
+applies and returns `None` if the sign isn't mapped (or is `None`). It's a
+pure, synchronous dict lookup - no threads, no queues, no latency cost for
+games that never call it.
+
+A minigame that resolves a button and wants the GUI/stats to see it
+constructs a `ControlEvent` (`core/events.py`: `session_id`, `player_id`,
+`button`, `source_event_id`, `recognized_sign?`, `confidence?`) and calls
+`self._sink.on_control_event(event)`, symmetric with `on_action_ready`/
+`GameActionEvent`. `GameController` re-emits it as `control_event_ready`,
+relayed through `SessionManager.control_event_ready` to
+`GUIIntegrationController.ui_control_event` - see
+`docs/gui_camera_ai_contract.md`. `ExampleGestureGame` does not use this
+layer (it compares `recognized_sign` directly); see
+`games/control_mapping.py`/`tests/test_base_game.py` for a worked example.
 
 ## Models
 
@@ -121,7 +159,7 @@ class GameEventSink(Protocol):
 |---|---|---|
 | `DifficultyProfile` | `level` (1-5), `gesture_timeout_ms`, `hint_delay_ms`, `hint_duration_ms`, `sequence_length`, `board_size`, `allowed_mistakes`, `speed_multiplier=1.0`, `metadata` | Frozen dataclass. Rejects `level` outside 1-5 and negative timing/count fields. |
 | `PlayerGameState` | `player_id`, `score=0`, `mistakes=0`, `hint_count=0`, `current_step=0`, `is_active=True` | Frozen dataclass - updated via `dataclasses.replace()`, never mutated in place. |
-| `GameContext` | `session_id`, `game_id`, `mode: GameMode`, `difficulty: DifficultyProfile`, `player_camera_mapping: Mapping[PlayerId, CameraId]`, `selected_algorithms: Mapping[CameraId, str]`, `config` | Everything a minigame needs to start. Mappings are frozen (`MappingProxyType`) after construction. |
+| `GameContext` | `session_id`, `game_id`, `mode: GameMode`, `difficulty: DifficultyProfile`, `player_camera_mapping: Mapping[PlayerId, CameraId]`, `selected_algorithms: Mapping[CameraId, str]`, `config`, `control_mapping: Mapping[str, VirtualButton]` | Everything a minigame needs to start. Mappings are frozen (`MappingProxyType`) after construction. `control_mapping`, if non-empty, overrides the game's `CONTROL_MAP` wholesale (see "Virtual buttons"). |
 
 `build_difficulty_profile(level: int) -> DifficultyProfile` returns a preset
 for levels 1-5. **The numbers in `DIFFICULTY_PRESETS` are placeholders** -
@@ -188,7 +226,10 @@ Use `games/example_gesture_game.py` as the template. Steps:
    `self._update_player(player_id, **changes)` to record score/mistakes -
    never mutate a `PlayerGameState` in place, it's frozen. Call
    `self._sink.on_action_ready(GameActionEvent(...))` for anything the GUI
-   or stats should see per gesture.
+   or stats should see per gesture. Optionally set `CONTROL_MAP` and call
+   `self._resolve_button(event)` / `self._sink.on_control_event(ControlEvent(...))`
+   if your game wants to consume/expose gestures as virtual buttons (see
+   "Virtual buttons" above) - most games can skip this entirely.
 6. Implement `end(reason)`: `return self._finalize(reason)`. That's usually
    the entire method body.
 7. Optionally override `get_expected_sign(player_id)` if your game has a

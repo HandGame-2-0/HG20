@@ -1,9 +1,10 @@
 from datetime import UTC, datetime
+from types import MappingProxyType
 from uuid import uuid4
 
 import pytest
 
-from handgame.core.models import CameraId, GameMode, GameState, PlayerId
+from handgame.core.models import CameraId, GameMode, GameState, PlayerId, VirtualButton
 from handgame.games.game_context import DifficultyProfile, GameContext, build_difficulty_profile
 from handgame.games.game_result import GameEndReason, GameResult
 
@@ -63,6 +64,34 @@ def test_game_context_freezes_mappings():
     )
     with pytest.raises(TypeError):
         context.player_camera_mapping[PlayerId.PLAYER_2] = CameraId.CAMERA_2
+
+
+def test_game_context_control_mapping_defaults_to_empty():
+    context = GameContext(
+        session_id=uuid4(),
+        game_id="EXAMPLE_GESTURE_GAME",
+        mode=GameMode.SINGLEPLAYER,
+        difficulty=build_difficulty_profile(1),
+        player_camera_mapping={PlayerId.PLAYER_1: CameraId.CAMERA_1},
+        selected_algorithms={CameraId.CAMERA_1: "MOCK_YOLO"},
+    )
+    assert context.control_mapping == {}
+    assert isinstance(context.control_mapping, MappingProxyType)
+
+
+def test_game_context_control_mapping_is_frozen():
+    context = GameContext(
+        session_id=uuid4(),
+        game_id="EXAMPLE_GESTURE_GAME",
+        mode=GameMode.SINGLEPLAYER,
+        difficulty=build_difficulty_profile(1),
+        player_camera_mapping={PlayerId.PLAYER_1: CameraId.CAMERA_1},
+        selected_algorithms={CameraId.CAMERA_1: "MOCK_YOLO"},
+        control_mapping={"A": VirtualButton.CONFIRM},
+    )
+    assert context.control_mapping == {"A": VirtualButton.CONFIRM}
+    with pytest.raises(TypeError):
+        context.control_mapping["B"] = VirtualButton.CANCEL
 
 
 def test_game_result_rejects_negative_duration():

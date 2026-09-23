@@ -2,8 +2,9 @@
 
 from uuid import uuid4
 
-from handgame.core.events import GestureRecognitionEvent
-from handgame.core.models import CameraId, GameMode, GameState, PlayerId
+from handgame.core.events import ControlEvent, GestureRecognitionEvent
+from handgame.core.models import CameraId, GameMode, GameState, PlayerId, VirtualButton
+from handgame.games.base_game import BaseGame
 from handgame.games.example_gesture_game import ExampleGestureGame
 from handgame.games.game_context import GameContext, build_difficulty_profile
 from handgame.games.game_result import GameEndReason
@@ -17,6 +18,7 @@ class RecordingSink:
         self.scores = []
         self.hints = []
         self.actions = []
+        self.controls = []
         self.results = []
         self.errors = []
 
@@ -31,6 +33,9 @@ class RecordingSink:
 
     def on_action_ready(self, action):
         self.actions.append(action)
+
+    def on_control_event(self, event):
+        self.controls.append(event)
 
     def on_finished(self, result):
         self.results.append(result)
@@ -142,3 +147,112 @@ def test_full_sequence_completion_returns_game_result():
     assert result is not None
     assert result.player_results[PlayerId.PLAYER_1].score == 3
     assert result.end_reason == GameEndReason.COMPLETED
+
+
+class ButtonGame(BaseGame):
+    """Minimal BaseGame subclass exercising _resolve_button/on_control_event."""
+
+    GAME_ID = "BUTTON_GAME"
+    CONTROL_MAP = {"A": VirtualButton.CONFIRM}
+
+    def start(self, context):
+        self._begin(context)
+        self._enter_running()
+
+    def update_frame(self, delta_ms):
+        pass
+
+    def end(self, reason=GameEndReason.COMPLETED):
+        return self._finalize(reason)
+
+    def _on_gesture(self, event):
+        button = self._resolve_button(event)
+        if button is not None:
+            self._sink.on_control_event(
+                ControlEvent(
+                    session_id=event.session_id,
+                    player_id=event.player_id,
+                    button=button,
+                    source_event_id=event.event_id,
+                    recognized_sign=event.recognized_sign,
+                    confidence=event.confidence,
+                )
+            )
+
+
+def make_button_context(control_mapping=None):
+    difficulty = build_difficulty_profile(1)
+    kwargs = dict(
+        session_id=uuid4(),
+        game_id=ButtonGame.GAME_ID,
+        mode=GameMode.SINGLEPLAYER,
+        difficulty=difficulty,
+        player_camera_mapping={PlayerId.PLAYER_1: CameraId.CAMERA_1},
+        selected_algorithms={CameraId.CAMERA_1: "MOCK_YOLO"},
+    )
+    if control_mapping is not None:
+        kwargs["control_mapping"] = control_mapping
+    return GameContext(**kwargs)
+
+
+def test_resolve_button_known_sign_fires_control_event():
+    sink = RecordingSink()
+    game = ButtonGame(sink)
+    context = make_button_context()
+    game.start(context)
+
+    game.handle_gesture(make_gesture(context, "A"))
+
+    assert len(sink.controls) == 1
+    control = sink.controls[0]
+    assert control.button == VirtualButton.CONFIRM
+    assert control.session_id == context.session_id
+    assert control.player_id == PlayerId.PLAYER_1
+
+
+def test_resolve_button_unknown_sign_fires_nothing():
+    sink = RecordingSink()
+    game = ButtonGame(sink)
+    context = make_button_context()
+    game.start(context)
+
+    game.handle_gesture(make_gesture(context, "ZZZ_NOT_MAPPED"))
+
+    assert sink.controls == []
+
+
+def test_resolve_button_none_sign_fires_nothing():
+    sink = RecordingSink()
+    game = ButtonGame(sink)
+    context = make_button_context()
+    game.start(context)
+
+    game.handle_gesture(make_gesture(context, None))
+
+    assert sink.controls == []
+
+
+def test_context_control_mapping_overrides_class_control_map():
+    sink = RecordingSink()
+    game = ButtonGame(sink)
+    context = make_button_context(control_mapping={"B": VirtualButton.CANCEL})
+    game.start(context)
+
+    # "A" is only in the class-level CONTROL_MAP - context override replaces it wholesale.
+    game.handle_gesture(make_gesture(context, "A"))
+    assert sink.controls == []
+
+    game.handle_gesture(make_gesture(context, "B"))
+    assert len(sink.controls) == 1
+    assert sink.controls[0].button == VirtualButton.CANCEL
+
+
+def test_rejected_gesture_never_reaches_resolve_button():
+    sink = RecordingSink()
+    game = ButtonGame(sink)
+    context = make_button_context()
+    # Game never started - handle_gesture's guard rejects before _on_gesture runs.
+    game.handle_gesture(make_gesture(context, "A"))
+
+    assert sink.controls == []
+    assert sink.errors
