@@ -52,7 +52,6 @@ def _player_name(player_id: PlayerId) -> str:
 
 
 def format_duration(duration_ms: float) -> str:
-    """``65000`` -> ``"1:05"``. Negative / sub-second -> ``"0:00"``."""
     total_seconds = max(0, round(duration_ms / 1000.0))
     minutes, seconds = divmod(total_seconds, 60)
     return f"{minutes}:{seconds:02d}"
@@ -63,7 +62,7 @@ def end_reason_text(reason: GameEndReason) -> str:
 
 
 def describe_outcome(player_results: Mapping[PlayerId, PlayerGameState]) -> str:
-    """Human summary line. Winner = highest already-computed score."""
+    """Winner = highest already-computed score."""
     items = list(player_results.items())
     if not items:
         return "No results recorded"
@@ -99,7 +98,7 @@ class ResultsScreen(QWidget):
 
         self._heading = QLabel("Game Results")
         self._heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._heading.setStyleSheet("font-size: 24px; font-weight: bold;")
+        self._heading.setStyleSheet("font-size: 24px; font-weight: bold; color: #0B2545;")
         root.addWidget(self._heading)
 
         self._meta = QLabel("")
@@ -108,12 +107,12 @@ class ResultsScreen(QWidget):
 
         self._outcome = QLabel("")
         self._outcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._outcome.setStyleSheet("font-size: 18px; font-weight: bold;")
+        self._outcome.setStyleSheet("font-size: 18px; font-weight: bold; color: #13315C;")
         root.addWidget(self._outcome)
 
         self._error_label = QLabel("The game ended with an error.")
         self._error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._error_label.setStyleSheet("color: #c0392b; font-weight: bold;")
+        self._error_label.setStyleSheet("color: #DC3220; font-weight: bold;")
         self._error_label.setVisible(False)
         root.addWidget(self._error_label)
 

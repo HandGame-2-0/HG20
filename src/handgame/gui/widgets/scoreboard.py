@@ -1,4 +1,4 @@
-"""Live scoreboard driven by ``GameController.score_changed`` (KAN-31).
+"""Live scoreboard driven by ``GameController.score_changed``.
 
 The widget subscribes to the shared game-runtime signal and renders the
 per-player numbers it receives. It performs no scoring: every value shown
@@ -69,7 +69,7 @@ class ScoreboardWidget(QWidget):
     def connect_controller(self, controller: object) -> None:
         """Subscribe to a ``GameController`` (or anything with the same signals).
 
-        Connects ``score_changed`` (mandatory) and, if present,
+        Connects ``score_changed`` and (if present)
         ``game_state_changed`` so the header can passively reflect
         PAUSED / FINISHED. No other coupling to the controller.
         """
