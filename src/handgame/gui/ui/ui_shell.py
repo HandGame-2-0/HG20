@@ -27,16 +27,21 @@ class Ui_MainWindow(object):
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
+        self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.horizontalLayout = QHBoxLayout()
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.appHeader = QWidget(self.centralwidget)
+        self.appHeader.setObjectName(u"appHeader")
+        self.horizontalLayout = QHBoxLayout(self.appHeader)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.backButton = QPushButton(self.centralwidget)
+        self.horizontalLayout.setContentsMargins(16, 10, 16, 10)
+        self.backButton = QPushButton(self.appHeader)
         self.backButton.setObjectName(u"backButton")
         self.backButton.setEnabled(True)
 
         self.horizontalLayout.addWidget(self.backButton)
 
-        self.screenTitle = QLabel(self.centralwidget)
+        self.screenTitle = QLabel(self.appHeader)
         self.screenTitle.setObjectName(u"screenTitle")
         self.screenTitle.setEnabled(True)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
@@ -49,14 +54,14 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addWidget(self.screenTitle)
 
-        self.settingsButton = QPushButton(self.centralwidget)
+        self.settingsButton = QPushButton(self.appHeader)
         self.settingsButton.setObjectName(u"settingsButton")
         self.settingsButton.setEnabled(True)
 
         self.horizontalLayout.addWidget(self.settingsButton)
 
 
-        self.verticalLayout.addLayout(self.horizontalLayout)
+        self.verticalLayout.addWidget(self.appHeader)
 
         self.stackedWidget = QStackedWidget(self.centralwidget)
         self.stackedWidget.setObjectName(u"stackedWidget")

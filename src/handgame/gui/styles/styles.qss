@@ -1,0 +1,392 @@
+/* Deep-blue + baby-blue + white / light-gray theme.
+
+   Palette (keep in sync with widgets/camera_preview.py):
+     navy-900  #0B2545   headings, HUD bar, preview panel, results card
+     navy-700  #13315C   primary buttons, HUD buttons
+     navy-600  #1D4E89   hover / selected borders
+     baby-500  #5FA8E0   baby-blue accents (borders, progress, strips)
+     baby-300  #A9D6F5   baby-blue text on navy
+     baby-100  #D6ECFB   selected tile / option
+     baby-50   #EEF7FD   hover / gameplay area
+     gray-50   #F4F6FA   app background (fades into baby-50)
+     gray-300  #D3DCE8   borders
+     gray-500  #8A9AB0   disabled text
+     slate-700 #3E4C63   secondary text
+     ink       #1B2433   body text
+   Accessibility: colorblind-safe status colours (#DC3220 error, #009E73
+   success), 48px touch targets, 8px radii, 2px focus ring (#2F80ED on
+   light surfaces, white on the navy bars; >= 3:1 contrast both ways). See
+   main.py for how the Inter font gets loaded -- this file only assumes
+   the family is available. */
+
+* {
+    font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: #1B2433;                 /* main text */
+}
+
+/* App background: light gray fading into baby blue */
+QMainWindow, QWidget#Screen {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #F4F6FA, stop: 1 #DDEFFC);
+}
+
+/* App header bar (shell.ui: Back | HandGame 2.0 | Settings) */
+QWidget#appHeader {
+    background-color: #0B2545;
+    border-bottom: 3px solid #5FA8E0;
+}
+
+QWidget#appHeader QLabel#screenTitle {
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+QWidget#appHeader QPushButton {
+    background-color: #13315C;
+    border: 1px solid #5FA8E0;
+    color: #FFFFFF;
+    min-height: 40px;
+}
+
+QWidget#appHeader QPushButton:hover {
+    background-color: #1D4E89;
+}
+
+QWidget#appHeader QPushButton:focus {
+    border: 2px solid #FFFFFF;
+    background-color: #1D4E89;
+}
+
+/* Main-menu logo text ("HandGame 2.0" in main_menu.ui) */
+MainMenu QLabel#label {
+    font-size: 40px;
+    font-weight: 800;
+    color: #0B2545;
+    padding: 16px 0;
+}
+
+/* H1 -- screen titles */
+QLabel#ScreenTitle {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0B2545;
+    padding: 24px 0 16px 0;
+}
+
+/* H2 -- subtitles / game names */
+QLabel#SectionHeading, QToolButton#GameTile {
+    font-size: 24px;
+    font-weight: 600;
+    color: #0B2545;
+}
+
+/* Body text -- instructions, option labels */
+QRadioButton, QCheckBox, QLabel#BodyText, QLabel#HudPoints, QLabel#HudTimer {
+    font-size: 16px;
+    font-weight: 400;
+}
+
+/* Caption -- small notes, error/status descriptions */
+QLabel#CalibrationStatus, QLabel#Caption {
+    font-size: 14px;
+    font-weight: 400;
+    color: #3E4C63;
+    padding: 6px 0;
+}
+
+/* Pill-style option row used on the camera-select screen */
+QRadioButton {
+    padding: 10px 14px;
+    background-color: #FFFFFF;
+    border: 1px solid #D3DCE8;
+    border-radius: 8px;
+}
+
+QRadioButton:hover {
+    background-color: #EEF7FD;
+    border-color: #5FA8E0;
+}
+
+QRadioButton:checked {
+    background-color: #D6ECFB;
+    border: 2px solid #13315C;
+    color: #0B2545;
+    font-weight: 600;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+/* Every interactive control: 48px touch target, 8px radius, per spec. */
+QPushButton, QToolButton, QRadioButton {
+    min-height: 48px;
+}
+
+/* Secondary button: white with navy text, baby-blue on hover */
+QPushButton {
+    background-color: #FFFFFF;
+    border: 1px solid #C3CFDF;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 16px;
+    color: #13315C;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #EEF7FD;
+    border-color: #5FA8E0;
+}
+
+QPushButton:pressed {
+    background-color: #D6ECFB;
+}
+
+QPushButton:disabled {
+    color: #8A9AB0;
+    background-color: #EEF2F7;
+    border-color: #E1E7EF;
+}
+
+/* Primary accent button (OK / Zatwierdź / Graj / Wybór minigry) */
+QPushButton#PrimaryButton {
+    background-color: #0B2545;
+    border: 1px solid #0B2545;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+QPushButton#PrimaryButton:hover {
+    background-color: #1D4E89;
+    border-color: #5FA8E0;
+}
+
+QPushButton#PrimaryButton:pressed {
+    background-color: #13315C;
+}
+
+QPushButton#PrimaryButton:disabled {
+    background-color: #A7B6CB;
+    border-color: #A7B6CB;
+    color: #F4F6FA;
+}
+
+/* Form controls (settings) */
+QComboBox, QSpinBox {
+    background-color: #FFFFFF;
+    border: 1px solid #C3CFDF;
+    border-radius: 8px;
+    padding: 6px 10px;
+    min-height: 32px;
+    color: #1B2433;
+}
+
+QComboBox:hover, QSpinBox:hover {
+    border-color: #5FA8E0;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    border: 1px solid #C3CFDF;
+    selection-background-color: #D6ECFB;
+    selection-color: #0B2545;
+}
+
+QProgressBar {
+    background-color: #EEF7FD;
+    border: 1px solid #A9D6F5;
+    border-radius: 6px;
+    text-align: center;
+    color: #0B2545;
+    min-height: 14px;
+}
+
+QProgressBar::chunk {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                      stop: 0 #13315C, stop: 1 #5FA8E0);
+    border-radius: 5px;
+}
+
+/* Focus ring: 2px bright blue on whatever currently has keyboard focus. */
+QPushButton:focus, QToolButton:focus, QRadioButton:focus, QSlider:focus,
+QComboBox:focus, QSpinBox:focus, QCheckBox:focus {
+    outline: none;
+    border: 2px solid #2F80ED;
+}
+
+/* Calibration preview frame — border colour switches with the dynamic
+   "state" property (see CameraPreviewWidget.set_state). Colour is never
+   the only signal: CalibrationState.status_text always carries a ✓/✗
+   prefix alongside it (accessibility rule: never colour alone). */
+CameraPreviewWidget {
+    border: 2px solid #5FA8E0;
+    border-radius: 8px;
+    background-color: #FFFFFF;
+}
+
+CameraPreviewWidget[state="error"] {
+    border: 2px solid #DC3220;      /* error */
+}
+
+CameraPreviewWidget[state="locked"] {
+    border: 2px solid #009E73;      /* success */
+}
+
+QLabel#CalibrationStatus[state="error"] {
+    color: #DC3220;
+    font-weight: 600;
+}
+
+QLabel#CalibrationStatus[state="locked"] {
+    color: #009E73;
+    font-weight: 600;
+}
+
+/* Minigame picker tiles: white, baby-blue on hover, navy when picked */
+QToolButton#GameTile {
+    background-color: #FFFFFF;
+    border: 1px solid #D3DCE8;
+    border-left: 6px solid #5FA8E0;
+    border-radius: 0;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    min-width: 120px;
+    min-height: 90px;
+}
+
+QToolButton#GameTile:hover {
+    border-color: #5FA8E0;
+    background-color: #EEF7FD;
+}
+
+QToolButton#GameTile:checked {
+    border: 2px solid #0B2545;
+    border-left: 6px solid #0B2545;
+    background-color: #D6ECFB;
+}
+
+/* Wireframe card (docs/appearance): centred panel holding the screen content */
+QFrame#PageCard {
+    background-color: #FFFFFF;
+    border: 1px solid #D3DCE8;
+    border-top: 6px solid #0B2545;
+    border-radius: 0;               /* thick strip + radius renders jagged */
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Full-width option buttons stacked in a card (difficulty, game over) */
+QPushButton#StackButton {
+    text-align: left;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-left: 4px solid #5FA8E0;
+    border-radius: 0;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+QPushButton#StackButton:hover {
+    background-color: #D6ECFB;
+    border-left: 4px solid #0B2545;
+}
+
+/* Difficulty modal (shown over a running/paused gameplay screen) */
+QFrame#ModalCard {
+    background-color: #FFFFFF;
+    border: 1px solid #D3DCE8;
+    border-top: 6px solid #0B2545;
+    border-radius: 0;               /* thick strip + radius renders jagged */
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+QFrame#ModalBackdrop {
+    background-color: rgba(11, 37, 69, 170);
+}
+
+/* In-game HUD: deep-blue bar, white text, baby-blue underline */
+QWidget#HudBar {
+    background-color: #0B2545;
+    border-bottom: 3px solid #5FA8E0;
+}
+
+QWidget#HudBar QLabel {
+    color: #FFFFFF;
+}
+
+QLabel#HudPoints, QLabel#HudTimer {
+    font-weight: 600;
+}
+
+QWidget#HudBar QLabel#HudTimer {
+    color: #A9D6F5;
+}
+
+QWidget#HudBar QLabel#HeartIcon {
+    font-size: 18px;
+    color: #FF6B6B;                 /* lighter red: readable on navy */
+}
+
+QWidget#HudBar QPushButton {
+    background-color: #13315C;
+    border: 1px solid #5FA8E0;
+    color: #FFFFFF;
+}
+
+QWidget#HudBar QPushButton:hover {
+    background-color: #1D4E89;
+}
+
+QWidget#HudBar QPushButton:focus {
+    border: 2px solid #FFFFFF;
+    background-color: #1D4E89;
+}
+
+/* Gameplay: side panel with the camera preview (docs/appearance/image1.png) */
+QFrame#PreviewPanel {
+    background-color: #0B2545;
+    border: 1px solid #13315C;
+    border-radius: 8px;
+}
+
+QFrame#PreviewPanel QLabel#SectionHeading {
+    color: #FFFFFF;
+}
+
+QFrame#GameplayArea {
+    background-color: #EEF7FD;
+    border: 2px dashed #A9D6F5;
+    border-radius: 8px;
+}
+
+/* Game-over results table: navy panel with baby-blue captions */
+QFrame#ResultsCard {
+    background-color: #0B2545;
+    border: 1px solid #13315C;
+    border-radius: 8px;
+}
+
+QLabel#ResultLabel {
+    color: #3E4C63;
+    font-size: 16px;
+}
+
+QFrame#ResultsCard QLabel#ResultLabel {
+    color: #A9D6F5;
+}
+
+QLabel#ResultValue {
+    font-weight: 700;
+    font-size: 16px;
+    color: #0B2545;
+}
+
+QFrame#ResultsCard QLabel#ResultValue {
+    color: #FFFFFF;
+}
