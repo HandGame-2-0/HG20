@@ -3,7 +3,7 @@ import sys
 from logging.handlers import RotatingFileHandler
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 
 from handgame.gui.integration_controller import GUIIntegrationController
 from handgame.gui.main_window import MainWindow

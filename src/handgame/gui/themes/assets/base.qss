@@ -1,0 +1,28 @@
+QWidget {
+    background-color: $background;
+    color: $text;
+    font-family: "$font_family";
+    font-size: ${font_size_px}px;
+}
+QMainWindow, QStackedWidget {
+    background-color: $background;
+}
+QPushButton {
+    background-color: $accent;
+    color: $accent_text;
+    border: 1px solid $border;
+    padding: 6px 12px;
+}
+QPushButton:hover {
+    background-color: $surface;
+    color: $text;
+}
+QComboBox, QSpinBox, QLineEdit, QCheckBox {
+    background-color: $surface;
+    color: $text;
+    border: 1px solid $border;
+}
+QLabel {
+    color: $text;
+    background-color: transparent;
+}

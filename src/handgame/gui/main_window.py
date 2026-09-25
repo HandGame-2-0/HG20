@@ -114,6 +114,10 @@ class MainWindow(QMainWindow):
 
         self.settings_screen.resolutionChange.connect(self._on_resolution_change)
         self.settings_screen.fullScreenRequest.connect(self._on_fullscreen_request)
+        self.settings_screen.themeChange.connect(self._on_theme_change)
+        if self.themeManager is not None:
+            self.settings_screen.setTheme(self.themeManager.current_theme)
+
         self.main_menu_screen.requestPage.connect(self.change_screen)
         self._wire_game_flow()
         # Set start screen
@@ -435,3 +439,8 @@ class MainWindow(QMainWindow):
     @Slot()
     def _on_fullscreen_request(self):
         self.showFullScreen()
+
+    @Slot(object)
+    def _on_theme_change(self, theme_id):
+        if self.themeManager is not None:
+            self.themeManager.apply(theme_id)
