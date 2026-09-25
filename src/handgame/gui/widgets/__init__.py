@@ -1,8 +1,5 @@
-"""GUI widgets (GUI-CORE-5 / KAN-31, KAN-34).
-
-These widgets are pure presentation: they render numbers and difficulty
-parameters that other layers have already computed. They never calculate a
-score, count a mistake, run gesture recognition, or own a QTimer.
+"""
+GUI widgets.
 """
 
 from handgame.gui.widgets.difficulty_view import (

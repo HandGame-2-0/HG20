@@ -1,16 +1,5 @@
-"""Read-only view of a ``DifficultyProfile`` as a row of progress bars + icons.
-
-KAN-34: "render the DifficultyProfile fields as progress bars / icons".
-
-This module only *consumes* ``DifficultyProfile`` (already defined in
-``handgame.games.game_context``) - it never defines a competing difficulty
-structure. ``difficulty_rows()`` is a pure function so it can be unit tested
-without Qt; ``DifficultyProfileWidget`` is the thin QWidget on top of it.
-
-Bar scaling: each numeric field is shown relative to the widest value that
-field takes across ``DIFFICULTY_PRESETS`` (levels 1-5), so a bar at ~100%
-means "as extreme as the hardest shipped preset". A hand-built profile that
-exceeds that range simply clamps to a full bar.
+"""
+Read-only view of a ``DifficultyProfile`` as a row of progress bars + icons.
 """
 
 from __future__ import annotations
