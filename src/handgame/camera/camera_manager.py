@@ -131,7 +131,7 @@ class CameraManager(QObject):
         self._states[camera_id] = CameraState.DISCONNECTED
 
     def shutdown(self, timeout_ms: int = 3_000) -> None:
-        """Safe termination before exiting the application. Waits for actual thread termination."""
+        """Safe termination before exiting. Waits for actual thread termination."""
         camera_ids = list(self._runtimes.keys())
 
         for camera_id in camera_ids:

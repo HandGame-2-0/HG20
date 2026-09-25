@@ -1,7 +1,6 @@
 from enum import Enum
-# =====================================================================
-# 1. ENUM DEFINING AVAILABLE SCREENS (GUI-CORE-4)
-# =====================================================================
+
+# Enum defining available screens
 
 class Screen(Enum):
     MAIN_MENU = 0
@@ -12,3 +11,5 @@ class Screen(Enum):
     DEV_MODE = 5
     RESULTS = 6
     GAME_VIEW = 7
+    CAMERA_SELECT = 8
+    GAME_OVER = 9

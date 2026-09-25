@@ -30,5 +30,5 @@ class BaseCameraWorker(QObject):
         raise NotImplementedError
 
     def force_error(self, message: str) -> None:
-        """Mock-only: force worker into CameraState.ERROR. Real hardware workers may leave unimplemented."""
+        """Mock-only: force worker into CameraState.ERROR."""
         raise NotImplementedError

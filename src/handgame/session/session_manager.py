@@ -59,7 +59,7 @@ class SessionManager(QObject):
         self._game_controller.game_action_ready.connect(self.game_action_ready)
         self._game_controller.control_event_ready.connect(self.control_event_ready)
         self._game_controller.metrics_ready.connect(self.metrics_ready)
-        self._game_controller.game_finished.connect(self.game_finished)
+        self._game_controller.game_finished.connect(self._on_game_finished)
         self._game_controller.game_error.connect(self.error_occurred)
 
     def _change_state(self, new_state: SessionState):
@@ -151,8 +151,19 @@ class SessionManager(QObject):
 
     def finish_session(self):
         if self._state in (SessionState.RUNNING, SessionState.PAUSED):
+            # end() reports back through _on_game_finished, which moves us to FINISHED.
             self._game_controller.end(GameEndReason.ABORTED)
+            if self._state != SessionState.FINISHED:
+                self._change_state(SessionState.FINISHED)
+
+    @Slot(object)
+    def _on_game_finished(self, result: object) -> None:
+        # The game can end on its own (e.g. sequence completed); without this the
+        # session stays RUNNING, keeps feeding gestures to a finished game and
+        # blocks prepare_session() for "play again".
+        if self._state in (SessionState.RUNNING, SessionState.PAUSED):
             self._change_state(SessionState.FINISHED)
+        self.game_finished.emit(result)
 
     def reset_session(self):
         if self._state == SessionState.RUNNING:

@@ -28,7 +28,7 @@ from handgame.games.game_result import GameEndReason, GameResult
 
 logger = logging.getLogger(__name__)
 
-# Valid state transitions in the minigame. Any other jump is rejected.
+# Valid state transitions in the minigame.
 _ALLOWED_TRANSITIONS: dict[GameState, frozenset[GameState]] = {
     GameState.CREATED: frozenset({GameState.READY, GameState.ERROR}),
     GameState.READY: frozenset({GameState.RUNNING, GameState.ERROR}),
@@ -58,10 +58,8 @@ class GameEventSink(Protocol):
 
 
 class BaseGame(ABC):
-    """Abstract base class for all mini-games. Does not import QtWidgets or any Qt modules."""
+    """Abstract base class for all minigames."""
 
-    # Per-game sign -> virtual button vocabulary. Empty by default (opt-in).
-    # GameContext.control_mapping, if non-empty, overrides this wholesale.
     CONTROL_MAP: ClassVar[Mapping[str, VirtualButton]] = {}
 
     def __init__(self, event_sink: GameEventSink) -> None:
@@ -90,7 +88,7 @@ class BaseGame(ABC):
     def _on_gesture(self, event: GestureRecognitionEvent) -> None:
         """The actual game logic after passing the handle_gesture filters (state/player/session)."""
 
-    # --- A specific implementation common to all mini-games ---
+    # --- An implementation common to all minigames ---
 
     def handle_gesture(self, event: GestureRecognitionEvent) -> None:
         if self._state != GameState.RUNNING:

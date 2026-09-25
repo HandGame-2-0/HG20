@@ -140,3 +140,40 @@ def test_unknown_game_id_emits_error_and_stays_out_of_running(qapp):
 
     assert mgr._state == SessionState.PREPARING
     assert len(errors) > 0
+
+
+def _correct_gesture(mgr: SessionManager, sign: str) -> GestureRecognitionEvent:
+    return GestureRecognitionEvent(
+        session_id=mgr.session_id,
+        player_id=PlayerId.PLAYER_1,
+        camera_id=CameraId.CAMERA_1,
+        algorithm_id="MOCK_YOLO",
+        expected_sign=sign,
+        recognized_sign=sign,
+        confidence=0.95,
+        is_correct=True,
+        latency_ms=12.5,
+    )
+
+
+def test_session_finishes_when_game_completes_on_its_own(qapp):
+    mgr = SessionManager()
+    expected: dict[PlayerId, str | None] = {}
+    mgr.expected_sign_ready.connect(lambda t: expected.__setitem__(t[1], t[3]))
+    results = []
+    mgr.game_finished.connect(results.append)
+    errors = []
+    mgr.error_occurred.connect(errors.append)
+    _make_ready_session(mgr)
+
+    # Keep answering correctly past the end of the sequence (camera keeps streaming).
+    for _ in range(10):
+        mgr.handle_gesture_event(_correct_gesture(mgr, expected.get(PlayerId.PLAYER_1) or "A"))
+
+    assert len(results) == 1
+    assert mgr._state == SessionState.FINISHED
+    assert errors == []  # late gestures are dropped, not reported to the finished game
+
+    # "Play again" must be possible straight away.
+    mgr.prepare_session(ExampleGestureGame.GAME_ID, 1)
+    assert mgr._state == SessionState.RUNNING

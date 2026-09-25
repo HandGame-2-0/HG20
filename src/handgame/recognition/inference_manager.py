@@ -54,17 +54,12 @@ class InferenceManager(QObject):
             return
 
         worker = MockInferenceWorker(camera_id=camera_id, algorithm_id=algorithm_id)
-        # No parent: lifecycle fully controlled via finished -> deleteLater below.
-        # QThread(self) would create DOUBLE ownership (C++ parent cascade vs a
-        # separately queued deleteLater on the same object) - risk of double-free
-        # if InferenceManager is destroyed before the thread's own event loop
-        # finishes cleanup.
         thread = QThread()
         handle = InferenceWorkerHandle()
 
         worker.moveToThread(thread)
 
-        # Manager -> worker: always QueuedConnection.
+        # Manager -> worker
         handle.start_requested.connect(
             worker.start,
             Qt.ConnectionType.QueuedConnection,
@@ -182,8 +177,9 @@ class InferenceManager(QObject):
         if event.camera_id is not None:
             self._states[event.camera_id] = event.current_state
 
-            # On AI error, unblock any pending wait for a result.
-            if event.current_state == InferenceState.ERROR:
+            # Back to READY (frame done, possibly with no gesture) or ERROR:
+            # unblock any pending wait for a result.
+            if event.current_state in (InferenceState.READY, InferenceState.ERROR):
                 self._is_busy[event.camera_id] = False
 
         self.inference_status_changed.emit(event)
@@ -229,12 +225,11 @@ class InferenceManager(QObject):
                     timeout_ms,
                     camera_id,
                 )
-                # Fallback: force event loop exit, without thread.terminate().
                 runtime.thread.quit()
                 runtime.thread.wait(1_000)
 
         # In tests without a full Qt event loop, finished may not
-        # fire _cleanup_runtime in time.
+        # fire _cleanup_runtime in time, so we clean up here as well.
         for camera_id in list(self._runtimes.keys()):
             runtime = self._runtimes[camera_id]
             if not runtime.thread.isRunning():

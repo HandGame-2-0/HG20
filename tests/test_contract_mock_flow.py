@@ -5,6 +5,17 @@ from handgame.games.example_gesture_game import ExampleGestureGame
 from handgame.gui.integration_controller import GUIIntegrationController
 from handgame.recognition.mock_inference_worker import MockResultSpec
 
+# The unconfigured mock recognises nothing; tests inject what the "player" shows.
+# ExampleGestureGame's sequence starts with "A".
+_FIRST_EXPECTED_SIGN = "A"
+
+
+def _show_correct_first_sign(controller: GUIIntegrationController) -> None:
+    controller.inference_mgr.configure_mock_worker(
+        CameraId.CAMERA_1,
+        MockResultSpec(recognized_sign=_FIRST_EXPECTED_SIGN, is_correct=True),
+    )
+
 
 def test_full_mock_flow_without_crashing(qtbot) -> None:
     """Verifies pipeline: MockCamera -> Inference -> Session -> Stats -> GameAction.
@@ -18,6 +29,7 @@ def test_full_mock_flow_without_crashing(qtbot) -> None:
 
     try:
         controller.select_camera("CAMERA_1", "PLAYER_1")
+        _show_correct_first_sign(controller)
         controller.prepare_game(ExampleGestureGame.GAME_ID, 1)
 
         # Wait for mocks to drive the pipeline and produce a game action.
@@ -48,9 +60,9 @@ def test_correct_gesture_produces_correct_game_action(qtbot) -> None:
 
     try:
         controller.select_camera("CAMERA_1", "PLAYER_1")
+        _show_correct_first_sign(controller)
         controller.prepare_game(ExampleGestureGame.GAME_ID, 1)
 
-        # Default mock behavior: recognized sign == expected sign == correct.
         qtbot.waitUntil(lambda: len(actions_received) > 0, timeout=3_000)
 
         assert actions_received[0].payload["is_correct"] is True

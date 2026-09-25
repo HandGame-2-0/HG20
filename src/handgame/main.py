@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from handgame.gui.integration_controller import GUIIntegrationController
 from handgame.gui.main_window import MainWindow
+from handgame.gui.theme import apply_theme
 
 
 def setup_logging() -> logging.Logger:
@@ -43,7 +44,7 @@ def global_exception_hook(exc_type, exc_value, exc_traceback):
         return
 
     logger.critical(
-        "Nieobsłużony wyjątek krytyczny!", exc_info=(exc_type, exc_value, exc_traceback)
+        "Nieobsłużony wyjątek", exc_info=(exc_type, exc_value, exc_traceback)
     )
 
     if QApplication.instance():
@@ -57,48 +58,33 @@ def global_exception_hook(exc_type, exc_value, exc_traceback):
 
 
 def main():
-    # 1. Set up logging and hooks
+    # Set up logging and hooks
     logger = setup_logging()
-    logger.info("Uruchamianie aplikacji HandGame 2.0...")
+    logger.info("Uruchamianie aplikacji...")
     sys.excepthook = global_exception_hook
 
-    # 2. Init PySide6
+    # Init PySide6
     app = QApplication(sys.argv)
     app.setApplicationName("HandGame 2.0")
     app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
+    apply_theme(app)
 
     try:
-        # 3. Init app "brain" (backend/contract)
+        # Init app "brain"
         controller = GUIIntegrationController()
 
-        # 4. Init main window (frontend)
-        # class DummyMainWindow(QMainWindow):
-        #     def __init__(self, ctrl):
-        #         super().__init__()
-        #         self.controller = ctrl
-        #         self.setWindowTitle("HandGame 2.0 - Shell")
-        #         self.resize(1024, 768)
-                
-        #     def safe_teardown(self):
-        #         logger = logging.getLogger("HandGame2")
-        #         logger.info("Zamykanie okna GUI...")
-
-        window = MainWindow()
+        window = MainWindow(controller)
         window.show()
 
-        # 5. Wire up safe-shutdown contract
+        # Wire up safe-shutdown contract
         # aboutToQuit notifies the window first, then calls controller.shutdown(),
         # which stops camera/AI workers cleanly without crashing.
         app.aboutToQuit.connect(window.safe_teardown)
         app.aboutToQuit.connect(controller.shutdown)
 
-        # Optional: simulate starting a test game on launch
-        # controller.select_camera("CAMERA_1", "PLAYER_1")
-        # controller.prepare_game("PUZZLE", 1)
+        logger.info("Aplikacja gotowa, wchodzenie w Event Loop.")
 
-        logger.info("Aplikacja gotowa, wchodzenie w główną pętlę zdarzeń (Event Loop).")
-
-        # 6. Blocking app event loop
+        # Blocking app event loop
         exit_code = app.exec()
         logger.info(f"Aplikacja zakończyła działanie z kodem wyjścia: {exit_code}")
         sys.exit(exit_code)

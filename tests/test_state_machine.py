@@ -67,4 +67,4 @@ def test_reset_returns_to_created_from_any_state():
 
     assert game.get_state() == GameState.CREATED
     assert game.get_result() is None
-    assert game._context is None  # internal context cleared, ready for next session
+    assert game._context is None  # internal context cleared
