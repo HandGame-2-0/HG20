@@ -5,7 +5,7 @@ DifficultyProfile.sequence_length). Correct gesture -> point + next step.
 Wrong gesture -> mistake counter. Once all players finish their sequence,
 the game ends automatically with GameEndReason.COMPLETED.
 
-No camera or real AI model needed - fully testable in isolation.
+No camera or real AI model needed (testable).
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ _SIGN_POOL: list[str] = ["A", "B", "C", "D", "E"]
 
 
 class ExampleGestureGame(BaseGame):
-    """Simple, fully testable "repeat the sequence" minigame."""
+    """Simple, testable "repeat the sequence" minigame."""
 
     GAME_ID: ClassVar[str] = "EXAMPLE_GESTURE_GAME"
     ACTION_TYPE_GESTURE_INPUT: ClassVar[str] = "GESTURE_INPUT"
@@ -45,7 +45,7 @@ class ExampleGestureGame(BaseGame):
         self._enter_running()
 
     def update_frame(self, delta_ms: float) -> None:
-        # No time-based logic here (no timeouts/timed hints).
+        # No time-based logic (no timeouts/timed hints).
         pass
 
     def get_expected_sign(self, player_id: PlayerId) -> str | None:

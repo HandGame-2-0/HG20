@@ -19,10 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 class GUIIntegrationController(QObject):
-    """GUI facade; the entire UI talks only to this class. Does not import QtWidgets, so it can run headless."""
+    """GUI facade: the entire UI talks only to this class. Does not import QtWidgets."""
 
     # Signals safe for views (GUI subscribes to these on the main thread)
     ui_camera_status_changed = Signal(CameraStatusEvent)
+    ui_frame_ready = Signal(object)  # FramePacket, for on-screen camera preview only
     ui_session_status_changed = Signal(SessionStatusEvent)
     ui_inference_status_changed = Signal(object)  # InferenceStatusEvent
     ui_gesture_result = Signal(object)  # GestureRecognitionEvent
@@ -65,6 +66,7 @@ class GUIIntegrationController(QObject):
 
         # Expose signals to GUI (GUI shows the appropriate message on receipt)
         self.camera_mgr.camera_status_changed.connect(self.ui_camera_status_changed)
+        self.camera_mgr.frame_ready.connect(self.ui_frame_ready)
         self.inference_mgr.inference_status_changed.connect(self.ui_inference_status_changed)
         self.inference_mgr.gesture_recognized.connect(self.ui_gesture_result)
         self.session_mgr.session_status_changed.connect(self.ui_session_status_changed)
@@ -72,7 +74,7 @@ class GUIIntegrationController(QObject):
         self.session_mgr.control_event_ready.connect(self.ui_control_event)
         self.session_mgr.game_finished.connect(self.ui_game_finished)
 
-        # Error aggregation (GUI should show a QMessageBox on receipt)
+        # Error aggregation (GUI should show a QMessageBox)
         for mgr in (self.camera_mgr, self.inference_mgr, self.session_mgr):
             mgr.error_occurred.connect(self.ui_error_occurred)
             mgr.error_occurred.connect(self.event_bus.global_error)
@@ -84,7 +86,7 @@ class GUIIntegrationController(QObject):
             str(session_id), player_id.name, expected_sign or "", camera_id
         )
 
-    # --- API FOR GUI VIEWS ---
+    # --- API for GUI views ---
 
     @Slot(str, int)
     @Slot(str, int, str)
@@ -100,6 +102,13 @@ class GUIIntegrationController(QObject):
         self.session_mgr.register_algorithm_mapping(cam, "MOCK_YOLO")
         self.camera_mgr.start_camera(cam, player)
         self.inference_mgr.start_algorithm(cam, "MOCK_YOLO")
+
+    @Slot(str)
+    def stop_camera(self, camera_id_str: str):
+        """Stop one camera and its algorithm, e.g. when the player picks another camera."""
+        cam = CameraId[camera_id_str]
+        self.inference_mgr.stop_algorithm(cam)
+        self.camera_mgr.stop_camera(cam)
 
     @Slot(str, str)
     def select_algorithm(self, camera_id_str: str, algorithm_id: str):

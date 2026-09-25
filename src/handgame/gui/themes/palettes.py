@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 class ThemeId(str ,Enum):
+    NAVY = "navy"
     LIGHT = "light"
     DARK = "dark"
     PROTANOPIA = "protanopia"
@@ -22,8 +23,34 @@ class ThemeToken:
     border: str
     font_family: str = "Segoe UI"
     font_size_px: int = 14
+    # Optional finer-grained tokens used by the game screens (header/HUD bars,
+    # hover, selection, focus...). None = derived from the base tokens above,
+    # so a palette only has to set the ones it wants to differ.
+    heading: str | None = None
+    background_end: str | None = None  # bottom of the app background gradient
+    surface_alt: str | None = None  # hover, gameplay area
+    highlight: str | None = None  # selected tile / option
+    accent_hover: str | None = None
+    accent_soft: str | None = None  # thin accent strips and hover borders
+    accent_disabled: str | None = None
+    button_text: str | None = None  # text on secondary (surface) buttons
+    border_strong: str | None = None  # inputs and buttons
+    bar: str | None = None  # header bar, HUD, preview panel, results card
+    bar_raised: str | None = None  # buttons sitting on a bar
+    bar_text: str | None = None
+    bar_text_muted: str | None = None
+    bar_accent: str | None = None
+    focus: str | None = None
+    focus_on_bar: str | None = None
+    disabled_text: str | None = None
+    disabled_surface: str | None = None
+    disabled_border: str | None = None
+    error_on_bar: str | None = None
+    backdrop: str | None = None  # dimmed layer behind modals
 
     def as_template_mapping(self) -> dict[str, str]:
+        bar = self.bar or self.accent
+        bar_text = self.bar_text or self.accent_text
         return {
             "name": self.name,
             "background": self.background,
@@ -37,7 +64,63 @@ class ThemeToken:
             "border": self.border,
             "font_family": self.font_family,
             "font_size_px": str(self.font_size_px),
+            "heading": self.heading or self.text,
+            "background_end": self.background_end or self.background,
+            "surface_alt": self.surface_alt or self.background,
+            "highlight": self.highlight or self.background,
+            "accent_hover": self.accent_hover or self.accent,
+            "accent_soft": self.accent_soft or self.accent,
+            "accent_disabled": self.accent_disabled or self.border,
+            "button_text": self.button_text or self.text,
+            "border_strong": self.border_strong or self.border,
+            "bar": bar,
+            "bar_raised": self.bar_raised or bar,
+            "bar_text": bar_text,
+            "bar_text_muted": self.bar_text_muted or bar_text,
+            "bar_accent": self.bar_accent or bar_text,
+            "focus": self.focus or self.accent,
+            "focus_on_bar": self.focus_on_bar or bar_text,
+            "disabled_text": self.disabled_text or self.text_muted,
+            "disabled_surface": self.disabled_surface or self.background,
+            "disabled_border": self.disabled_border or self.border,
+            "error_on_bar": self.error_on_bar or bar_text,
+            "backdrop": self.backdrop or "rgba(0, 0, 0, 150)",
         }
+
+NAVY = ThemeToken(
+    name="Granatowy",
+    background="#F4F6FA",
+    surface="#FFFFFF",
+    text="#1B2433",
+    text_muted="#3E4C63",
+    accent="#0B2545",
+    accent_text="#FFFFFF",
+    error="#DC3220",
+    success="#009E73",
+    border="#D3DCE8",
+    font_family="Inter",
+    heading="#0B2545",
+    background_end="#DDEFFC",
+    surface_alt="#EEF7FD",
+    highlight="#D6ECFB",
+    accent_hover="#1D4E89",
+    accent_soft="#5FA8E0",
+    accent_disabled="#A7B6CB",
+    button_text="#13315C",
+    border_strong="#C3CFDF",
+    bar="#0B2545",
+    bar_raised="#13315C",
+    bar_text="#FFFFFF",
+    bar_text_muted="#A9D6F5",
+    bar_accent="#5FA8E0",
+    focus="#2F80ED",
+    focus_on_bar="#FFFFFF",
+    disabled_text="#8A9AB0",
+    disabled_surface="#EEF2F7",
+    disabled_border="#E1E7EF",
+    error_on_bar="#FF6B6B",
+    backdrop="rgba(11, 37, 69, 170)",
+)
 
 LIGHT = ThemeToken(
     name="Jasny",
@@ -115,6 +198,7 @@ MONOCHROME = ThemeToken(
 )
 
 PALETTES = {
+    ThemeId.NAVY: NAVY,
     ThemeId.LIGHT: LIGHT, 
     ThemeId.DARK: DARK,
     ThemeId.PROTANOPIA: PROTANOPIA,
@@ -122,7 +206,7 @@ PALETTES = {
     ThemeId.TRITANOPIA: TRITANOPIA,
     ThemeId.MONOCHROME: MONOCHROME
     }
-DEFAULT_THEME = ThemeId.LIGHT
+DEFAULT_THEME = ThemeId.NAVY
 
 
 def get_tokens(theme_id: ThemeId) -> ThemeToken:

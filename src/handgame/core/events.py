@@ -25,7 +25,7 @@ def utc_now() -> datetime:
 class FramePacket:
     camera_id: CameraId
     frame_id: int
-    frame: Any  # e.g. np.ndarray; do not persist to disk/stats
+    frame: Any  # e.g. np.ndarray
     player_id: PlayerId | None = None
     timestamp: datetime = field(default_factory=utc_now)
 

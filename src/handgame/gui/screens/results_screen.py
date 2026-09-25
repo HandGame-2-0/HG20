@@ -98,7 +98,7 @@ class ResultsScreen(QWidget):
 
         self._heading = QLabel("Game Results")
         self._heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._heading.setStyleSheet("font-size: 24px; font-weight: bold; color: #0B2545;")
+        self._heading.setObjectName("SectionHeading")
         root.addWidget(self._heading)
 
         self._meta = QLabel("")
@@ -107,12 +107,12 @@ class ResultsScreen(QWidget):
 
         self._outcome = QLabel("")
         self._outcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._outcome.setStyleSheet("font-size: 18px; font-weight: bold; color: #13315C;")
+        self._outcome.setObjectName("ResultOutcome")
         root.addWidget(self._outcome)
 
         self._error_label = QLabel("The game ended with an error.")
         self._error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._error_label.setStyleSheet("color: #DC3220; font-weight: bold;")
+        self._error_label.setObjectName("ErrorText")
         self._error_label.setVisible(False)
         root.addWidget(self._error_label)
 

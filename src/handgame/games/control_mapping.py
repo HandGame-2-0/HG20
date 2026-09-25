@@ -1,6 +1,6 @@
 """Pure function mapping a recognized sign to a VirtualButton.
 
-No Qt, no camera/recognition imports - safe to call from BaseGame._on_gesture.
+No Qt or camera/recognition imports - safe to call from BaseGame._on_gesture.
 """
 
 from __future__ import annotations

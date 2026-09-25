@@ -1,7 +1,6 @@
 """Typed models for minigame context and difficulty parameters.
 
-Default values in ``DIFFICULTY_PRESETS`` are placeholders for the game
-balance team to tune - not the result of any playtesting.
+Default values in ``DIFFICULTY_PRESETS`` are placeholders for the game balance team to tune.
 """
 
 from __future__ import annotations
@@ -83,7 +82,7 @@ class PlayerGameState:
 
 @dataclass(frozen=True)
 class GameContext:
-    """Everything a minigame needs to start; provided by SessionManager."""
+    """Everything for a minigame to start (provided by SessionManager)."""
 
     session_id: UUID
     game_id: str

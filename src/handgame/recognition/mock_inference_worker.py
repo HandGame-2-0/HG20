@@ -66,33 +66,33 @@ class MockInferenceWorker(BaseInferenceWorker):
         """Simple simulation; prod will use a blocking AI model."""
         if self._state not in (InferenceState.READY, InferenceState.PROCESSING):
             return
-
         self._set_state(InferenceState.PROCESSING)
 
-        if self._result_queue:
-            spec = self._result_queue.pop(0)
-            if spec.is_error:
-                self._set_state(InferenceState.ERROR, spec.error_message)
-                self.error_occurred.emit(
-                    ApplicationErrorEvent(
-                        source=SourceType.INFERENCE,
-                        severity=Severity.ERROR,
-                        code="INF_MOCK_ERR",
-                        message=spec.error_message,
-                        recoverable=True,
-                        camera_id=self.camera_id,
-                    )
+        if not self._result_queue:
+            # Unconfigured: recognise nothing (like no hand in view), so the
+            # mock never plays - and ends - a minigame by itself. Results are
+            # injected via configure_mock_result().
+            self._set_state(InferenceState.READY)
+            return
+
+        spec = self._result_queue.pop(0)
+        if spec.is_error:
+            self._set_state(InferenceState.ERROR, spec.error_message)
+            self.error_occurred.emit(
+                ApplicationErrorEvent(
+                    source=SourceType.INFERENCE,
+                    severity=Severity.ERROR,
+                    code="INF_MOCK_ERR",
+                    message=spec.error_message,
+                    recoverable=True,
+                    camera_id=self.camera_id,
                 )
-                self._set_state(InferenceState.READY)
-                return
-            rec_sign = spec.recognized_sign
-            confidence = spec.confidence
-            is_correct = spec.is_correct
-        else:
-            # Default behavior (no config) - unchanged from previous version.
-            rec_sign = self.expected_sign if self.expected_sign else "A"
-            is_correct = (rec_sign == self.expected_sign) if self.expected_sign else None
-            confidence = 0.95
+            )
+            self._set_state(InferenceState.READY)
+            return
+        rec_sign = spec.recognized_sign
+        confidence = spec.confidence
+        is_correct = spec.is_correct
 
         result = GestureRecognitionEvent(
             session_id=self.current_session or uuid4(),

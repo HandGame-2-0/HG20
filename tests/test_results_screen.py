@@ -1,4 +1,4 @@
-"""Tests for the GAME-3 shared results screen.
+"""Tests for the shared results screen.
 
 Pure helpers are tested without Qt; the widget tests build a GameResult
 (either by hand or by driving ExampleGestureGame to completion) and assert
