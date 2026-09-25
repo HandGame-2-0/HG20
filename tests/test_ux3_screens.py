@@ -28,7 +28,6 @@ from handgame.gui.screens.minigame_select import (
     MinigameSelectScreen,
     game_summaries,
 )
-from handgame.gui.theme import load_stylesheet
 from handgame.gui.widgets.difficulty_modal import LEVEL_LABELS, DifficultyModal
 
 
@@ -39,12 +38,6 @@ def _collect(signal):
 
 
 # --- helpers ---
-
-
-def test_stylesheet_ships_with_package():
-    qss = load_stylesheet()
-    assert "QPushButton#PrimaryButton" in qss
-    assert 'CameraPreviewWidget[state="error"]' in qss
 
 
 def test_game_summaries_prettify_registry_ids():

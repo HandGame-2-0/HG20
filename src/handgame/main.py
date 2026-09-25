@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 
 from handgame.gui.integration_controller import GUIIntegrationController
 from handgame.gui.main_window import MainWindow
-from handgame.gui.theme import apply_theme
+from handgame.gui.themes.theme_menager import ThemeManager
 
 
 def setup_logging() -> logging.Logger:
@@ -67,13 +67,15 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("HandGame 2.0")
     app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
-    apply_theme(app)
+    app.setStyle(QStyleFactory.create("Fusion"))
 
     try:
         # Init app "brain"
         controller = GUIIntegrationController()
+        themeManager = ThemeManager()
+        themeManager.apply_saved()
 
-        window = MainWindow(controller)
+        window = MainWindow(controller, themeMng=themeManager)
         window.show()
 
         # Wire up safe-shutdown contract

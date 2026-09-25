@@ -39,7 +39,7 @@ class DummyScreen(QWidget):
 
         label = QLabel(f"To jest ekran: {name}")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("font-size: 24px; font-weight: bold; color: #0B2545;")
+        label.setObjectName("SectionHeading")
 
         btn_back = QPushButton("Wróć do Menu Głównego")
         btn_back.setFixedSize(250, 50)
@@ -53,11 +53,13 @@ class DummyScreen(QWidget):
 # Main App Window Class
 
 class MainWindow(QMainWindow):
-    def __init__(self, controller=None):
+    def __init__(self, controller=None, themeMng=None):
         """``controller`` - optional ``GUIIntegrationController``. Without it the
-        screens still navigate, but no camera / session calls are made."""
+        screens still navigate, but no camera / session calls are made.
+        ``themeMng`` - optional ``ThemeManager`` behind the Settings theme picker."""
         super().__init__()
         self.controller = controller
+        self.themeManager = themeMng
         self.setWindowTitle("HandGame 2.0")
 
         # Target RPi resolution / optimization
@@ -367,6 +369,8 @@ class MainWindow(QMainWindow):
         """Switches the currently displayed screen."""
         if screen is Screen.SETTINGS:
             self.settings_screen.setResolution(self.width(), self.height())
+            if self.themeManager is not None:
+                self.settings_screen.setTheme(self.themeManager.current_theme)
         logger.info(f"Przełączanie ekranu na {screen.name}")
         self.router.setCurrentIndex(screen.value)
         if screen.value == self._currentPage:

@@ -1,28 +1,399 @@
-QWidget {
-    background-color: $background;
-    color: $text;
-    font-family: "$font_family";
+/* App-wide stylesheet template, rendered by ThemeManager.
+
+   Every colour is a dollar-prefixed token from themes/palettes.py
+   (ThemeToken), so each palette (Granatowy, Jasny, Ciemny, colour-blind
+   variants...) styles every screen. Status is never shown by colour alone: CalibrationState.status_text
+   always carries a ✓/✗ prefix. 48px touch targets, 8px radii, 2px focus ring. */
+
+* {
+    font-family: "$font_family", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     font-size: ${font_size_px}px;
-}
-QMainWindow, QStackedWidget {
-    background-color: $background;
-}
-QPushButton {
-    background-color: $accent;
-    color: $accent_text;
-    border: 1px solid $border;
-    padding: 6px 12px;
-}
-QPushButton:hover {
-    background-color: $surface;
     color: $text;
 }
-QComboBox, QSpinBox, QLineEdit, QCheckBox {
-    background-color: $surface;
-    color: $text;
-    border: 1px solid $border;
-}
+
 QLabel {
-    color: $text;
     background-color: transparent;
+}
+
+/* App background */
+QMainWindow, QWidget#Screen {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 $background, stop: 1 $background_end);
+}
+
+/* App header bar (shell.ui: Back | HandGame 2.0 | Settings) */
+QWidget#appHeader {
+    background-color: $bar;
+    border-bottom: 3px solid $bar_accent;
+}
+
+QWidget#appHeader QLabel#screenTitle {
+    color: $bar_text;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+QWidget#appHeader QPushButton {
+    background-color: $bar_raised;
+    border: 1px solid $bar_accent;
+    color: $bar_text;
+    min-height: 40px;
+}
+
+QWidget#appHeader QPushButton:hover {
+    background-color: $accent_hover;
+}
+
+QWidget#appHeader QPushButton:focus {
+    border: 2px solid $focus_on_bar;
+    background-color: $accent_hover;
+}
+
+/* Main-menu logo text ("HandGame 2.0" in main_menu.ui) */
+MainMenu QLabel#label {
+    font-size: 40px;
+    font-weight: 800;
+    color: $heading;
+    padding: 16px 0;
+}
+
+/* H1 -- screen titles */
+QLabel#ScreenTitle {
+    font-size: 32px;
+    font-weight: 700;
+    color: $heading;
+    padding: 24px 0 16px 0;
+}
+
+/* H2 -- subtitles / game names */
+QLabel#SectionHeading, QToolButton#GameTile {
+    font-size: 24px;
+    font-weight: 600;
+    color: $heading;
+}
+
+/* Body text -- instructions, option labels */
+QRadioButton, QCheckBox, QLabel#BodyText, QLabel#HudPoints, QLabel#HudTimer {
+    font-size: 16px;
+    font-weight: 400;
+}
+
+/* Caption -- small notes, error/status descriptions */
+QLabel#CalibrationStatus, QLabel#Caption {
+    font-size: 14px;
+    font-weight: 400;
+    color: $text_muted;
+    padding: 6px 0;
+}
+
+/* Results screen (results_screen.py) */
+QLabel#ResultOutcome {
+    font-size: 18px;
+    font-weight: 700;
+    color: $button_text;
+}
+
+QLabel#ErrorText {
+    color: $error;
+    font-weight: 700;
+}
+
+/* Pill-style option row used on the camera-select screen */
+QRadioButton {
+    padding: 10px 14px;
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 8px;
+}
+
+QRadioButton:hover {
+    background-color: $surface_alt;
+    border-color: $accent_soft;
+}
+
+QRadioButton:checked {
+    background-color: $highlight;
+    border: 2px solid $accent;
+    color: $heading;
+    font-weight: 600;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+/* Every interactive control: 48px touch target, 8px radius, per spec. */
+QPushButton, QToolButton, QRadioButton {
+    min-height: 48px;
+}
+
+/* Secondary button: surface with accent-coloured text */
+QPushButton {
+    background-color: $surface;
+    border: 1px solid $border_strong;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 16px;
+    color: $button_text;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: $surface_alt;
+    border-color: $accent_soft;
+}
+
+QPushButton:pressed {
+    background-color: $highlight;
+}
+
+QPushButton:disabled {
+    color: $disabled_text;
+    background-color: $disabled_surface;
+    border-color: $disabled_border;
+}
+
+/* Primary accent button (OK / Zatwierdź / Graj / Wybór minigry) */
+QPushButton#PrimaryButton {
+    background-color: $accent;
+    border: 1px solid $accent;
+    color: $accent_text;
+    font-weight: 600;
+}
+
+QPushButton#PrimaryButton:hover {
+    background-color: $accent_hover;
+    border-color: $accent_soft;
+}
+
+QPushButton#PrimaryButton:pressed {
+    background-color: $accent;
+}
+
+QPushButton#PrimaryButton:disabled {
+    background-color: $accent_disabled;
+    border-color: $accent_disabled;
+    color: $background;
+}
+
+/* Form controls (settings) */
+QComboBox, QSpinBox, QLineEdit {
+    background-color: $surface;
+    border: 1px solid $border_strong;
+    border-radius: 8px;
+    padding: 6px 10px;
+    min-height: 32px;
+    color: $text;
+}
+
+QComboBox:hover, QSpinBox:hover, QLineEdit:hover {
+    border-color: $accent_soft;
+}
+
+QComboBox QAbstractItemView {
+    background-color: $surface;
+    color: $text;
+    border: 1px solid $border_strong;
+    selection-background-color: $highlight;
+    selection-color: $heading;
+}
+
+QProgressBar {
+    background-color: $surface_alt;
+    border: 1px solid $accent_soft;
+    border-radius: 6px;
+    text-align: center;
+    color: $heading;
+    min-height: 14px;
+}
+
+QProgressBar::chunk {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                      stop: 0 $bar_raised, stop: 1 $accent_soft);
+    border-radius: 5px;
+}
+
+/* Focus ring on whatever currently has keyboard focus. */
+QPushButton:focus, QToolButton:focus, QRadioButton:focus, QSlider:focus,
+QComboBox:focus, QSpinBox:focus, QLineEdit:focus, QCheckBox:focus {
+    outline: none;
+    border: 2px solid $focus;
+}
+
+/* Camera preview frame -- border colour switches with the dynamic "state"
+   property (see CameraPreviewWidget.set_zone_state). The qproperty lines
+   hand the same colours to the painted detection zone. */
+CameraPreviewWidget {
+    border: 2px solid $accent_soft;
+    border-radius: 8px;
+    background-color: $surface;
+    color: $text_muted;
+    qproperty-zoneColor: $heading;
+    qproperty-zoneErrorColor: $error;
+    qproperty-zoneLockedColor: $success;
+}
+
+CameraPreviewWidget[state="error"] {
+    border: 2px solid $error;
+}
+
+CameraPreviewWidget[state="locked"] {
+    border: 2px solid $success;
+}
+
+QLabel#CalibrationStatus[state="error"] {
+    color: $error;
+    font-weight: 600;
+}
+
+QLabel#CalibrationStatus[state="locked"] {
+    color: $success;
+    font-weight: 600;
+}
+
+/* Minigame picker tiles: accent strip, soft hover, highlighted when picked */
+QToolButton#GameTile {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-left: 6px solid $accent_soft;
+    border-radius: 0;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    min-width: 120px;
+    min-height: 90px;
+}
+
+QToolButton#GameTile:hover {
+    border-color: $accent_soft;
+    background-color: $surface_alt;
+}
+
+QToolButton#GameTile:checked {
+    border: 2px solid $accent;
+    border-left: 6px solid $accent;
+    background-color: $highlight;
+}
+
+/* Wireframe card (docs/appearance): centred panel holding the screen content */
+QFrame#PageCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-top: 6px solid $accent;
+    border-radius: 0;               /* thick strip + radius renders jagged */
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Full-width option buttons stacked in a card (difficulty, game over) */
+QPushButton#StackButton {
+    text-align: left;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-left: 4px solid $accent_soft;
+    border-radius: 0;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+QPushButton#StackButton:hover {
+    background-color: $highlight;
+    border-left: 4px solid $accent;
+}
+
+/* Difficulty modal (shown over a running/paused gameplay screen) */
+QFrame#ModalCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-top: 6px solid $accent;
+    border-radius: 0;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+QFrame#ModalBackdrop {
+    background-color: $backdrop;
+}
+
+/* In-game HUD bar */
+QWidget#HudBar {
+    background-color: $bar;
+    border-bottom: 3px solid $bar_accent;
+}
+
+QWidget#HudBar QLabel {
+    color: $bar_text;
+}
+
+QLabel#HudPoints, QLabel#HudTimer {
+    font-weight: 600;
+}
+
+QWidget#HudBar QLabel#HudTimer {
+    color: $bar_text_muted;
+}
+
+QWidget#HudBar QLabel#HeartIcon {
+    font-size: 18px;
+    color: $error_on_bar;
+}
+
+QWidget#HudBar QPushButton {
+    background-color: $bar_raised;
+    border: 1px solid $bar_accent;
+    color: $bar_text;
+}
+
+QWidget#HudBar QPushButton:hover {
+    background-color: $accent_hover;
+}
+
+QWidget#HudBar QPushButton:focus {
+    border: 2px solid $focus_on_bar;
+    background-color: $accent_hover;
+}
+
+/* Gameplay: side panel with the camera preview (docs/appearance/image1.png) */
+QFrame#PreviewPanel {
+    background-color: $bar;
+    border: 1px solid $bar_raised;
+    border-radius: 8px;
+}
+
+QFrame#PreviewPanel QLabel#SectionHeading {
+    color: $bar_text;
+}
+
+QFrame#GameplayArea {
+    background-color: $surface_alt;
+    border: 2px dashed $accent_soft;
+    border-radius: 8px;
+}
+
+/* Game-over results table: bar-coloured panel */
+QFrame#ResultsCard {
+    background-color: $bar;
+    border: 1px solid $bar_raised;
+    border-radius: 8px;
+}
+
+QLabel#ResultLabel {
+    color: $text_muted;
+    font-size: 16px;
+}
+
+QFrame#ResultsCard QLabel#ResultLabel {
+    color: $bar_text_muted;
+}
+
+QLabel#ResultValue {
+    font-weight: 700;
+    font-size: 16px;
+    color: $heading;
+}
+
+QFrame#ResultsCard QLabel#ResultValue {
+    color: $bar_text;
 }
