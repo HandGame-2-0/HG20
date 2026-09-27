@@ -7,6 +7,11 @@ from PySide6.QtWidgets import QApplication
 
 from handgame.gui.integration_controller import GUIIntegrationController
 
+# Managers default to AppConfig.from_env(); keep the suite on the mock camera
+# and mock AI so it never touches a webcam or needs model files.
+os.environ["HANDGAME_CAMERA_BACKEND"] = "mock"
+os.environ["HANDGAME_ALGORITHM"] = "MOCK_YOLO"
+
 
 @pytest.fixture(scope="session")
 def qapp():

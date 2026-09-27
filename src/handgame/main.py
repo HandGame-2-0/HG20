@@ -32,6 +32,12 @@ def setup_logging() -> logging.Logger:
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 
+    # Camera / recognition modules log under their package name (``handgame.*``).
+    package_logger = logging.getLogger("handgame")
+    package_logger.setLevel(logging.DEBUG)
+    package_logger.addHandler(console_handler)
+    package_logger.addHandler(file_handler)
+
     return logger
 
 
