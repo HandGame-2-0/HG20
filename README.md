@@ -65,6 +65,32 @@ Alternatively:
 poetry run handgame
 ```
 
+## Camera and PJM letter recognition
+
+By default the app uses the first webcam (OpenCV) and recognizes the static
+PJM letters `A B C E I L M N O P R S T U V W Y` with MediaPipe hand landmarks
+and the bundled classifier `models/pjm_static_letters.joblib` (MLP on
+`hand_geometry` features: signed palm-plane volumes, method from
+[MagMat03/handgesture](https://github.com/MagMat03/handgesture), plus all
+pairwise landmark distances, from MediaPipe world landmarks).
+
+On first run the app downloads the MediaPipe hand landmarker (~7.5 MB) to
+`models/hand_landmarker.task` if that file is missing (not committed).
+
+The recognized letter and its confidence are shown under the camera preview
+during a game ("Rozpoznano: A (87%)").
+
+Run without a webcam / models (mock camera + mock AI):
+
+```powershell
+$env:HANDGAME_CAMERA_BACKEND = "mock"; $env:HANDGAME_ALGORITHM = "MOCK_YOLO"
+poetry run handgame
+```
+
+All `HANDGAME_*` settings (camera index, mirroring, model paths, stabilization)
+are listed in `docs/gui_camera_ai_contract.md`, section "Backends, algorithms
+and configuration".
+
 ## Suggested minimal directory structure
 
 ```text
