@@ -349,6 +349,20 @@ class _FakeController(QObject):
         return lambda *args: self.calls.append((name, *args))
 
 
+def test_calibration_button_asks_for_camera_first(qapp):
+    from handgame.gui.main_window import MainWindow
+
+    controller = _FakeController()
+    window = MainWindow(controller)
+
+    window.main_menu_screen.ui.gameButton2.click()
+    assert window.router.currentWidget() is window.camera_select_screen
+
+    window.camera_select_screen._ok_button.click()
+    assert ("select_camera", "CAMERA_1", "PLAYER_1") in controller.calls
+    assert window.router.currentWidget() is window.calibration_screen
+
+
 def test_main_window_uses_controller(qapp):
     from handgame.core.events import CameraStatusEvent, FramePacket
     from handgame.core.models import CameraState
@@ -391,6 +405,62 @@ def test_main_window_uses_controller(qapp):
     window.gameplay_screen.exit_requested.emit()
     assert controller.calls[-1] == ("finish_game",)
     assert window.router.currentWidget() is window.minigame_select_screen
+
+
+def test_reselecting_running_camera_does_not_restart_it(qapp):
+    from handgame.core.events import CameraStatusEvent
+    from handgame.core.models import CameraState
+    from handgame.gui.main_window import MainWindow
+
+    controller = _FakeController()
+    window = MainWindow(controller)
+    window.camera_select_screen._ok_button.click()
+    controller.ui_camera_status_changed.emit(
+        CameraStatusEvent(CameraId.CAMERA_1, CameraState.READY, CameraState.STREAMING)
+    )
+    window.change_screen(Screen.CAMERA_SELECT)
+    controller.calls.clear()
+
+    window.camera_select_screen._ok_button.click()
+
+    assert controller.calls == []
+    assert window.router.currentWidget() is window.calibration_screen
+    assert window.calibration_screen.state() is CalibrationState.DETECTING
+
+
+def test_leaving_game_view_finishes_the_game(qapp):
+    from handgame.gui.main_window import MainWindow
+
+    controller = _FakeController()
+    window = MainWindow(controller)
+
+    def start_game() -> None:
+        window.change_screen(Screen.GAME_SELECT)
+        window.minigame_select_screen.game_selected.emit(ExampleGestureGame.GAME_ID)
+        window.difficulty_modal.button_for(3).click()
+        assert window.router.currentWidget() is window.gameplay_screen
+
+    start_game()
+    controller.calls.clear()
+    window.ui.settingsButton.click()
+    assert ("finish_game",) not in controller.calls  # settings is a detour
+    window.ui.backButton.click()
+    assert window.router.currentWidget() is window.gameplay_screen
+    window.ui.backButton.click()
+    assert controller.calls == [("finish_game",)]
+
+    start_game()
+    controller.calls.clear()
+    window.change_screen(Screen.CAMERA_SELECT)
+    assert controller.calls == [("finish_game",)]
+
+    # A session left running anyway is finished before the next one is prepared.
+    controller.calls.clear()
+    start_game()
+    assert controller.calls[:2] == [
+        ("finish_game",),
+        ("prepare_game", ExampleGestureGame.GAME_ID, 3),
+    ]
 
 
 def test_hand_tracking_draws_skeleton_and_letter_on_preview(qapp):

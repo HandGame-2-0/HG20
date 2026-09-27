@@ -37,6 +37,23 @@ def test_session_auto_starts_once_camera_and_ai_ready(qapp):
     assert mgr._state == SessionState.RUNNING
 
 
+def test_processing_inference_counts_as_ready(qapp):
+    mgr = SessionManager()
+    errors = []
+    mgr.error_occurred.connect(errors.append)
+    _make_ready_session(mgr)
+    mgr.pause_session()
+
+    # Real workers report PROCESSING while a frame is being classified.
+    mgr.handle_inference_status(
+        InferenceStatusEvent("MOCK_YOLO", InferenceState.READY, InferenceState.PROCESSING)
+    )
+    mgr.resume_session()
+
+    assert mgr._state == SessionState.RUNNING
+    assert errors == []
+
+
 def test_start_session_blocked_without_camera_or_ai_ready(qapp):
     mgr = SessionManager()
     mgr.register_camera_mapping(CameraId.CAMERA_1, PlayerId.PLAYER_1)

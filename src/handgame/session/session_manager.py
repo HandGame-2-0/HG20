@@ -192,7 +192,11 @@ class SessionManager(QObject):
 
     @Slot(InferenceStatusEvent)
     def handle_inference_status(self, event: InferenceStatusEvent):
-        self._sys_ai_ready = event.current_state == InferenceState.READY
+        # Workers flip READY <-> PROCESSING on every frame; both mean "running".
+        self._sys_ai_ready = event.current_state in (
+            InferenceState.READY,
+            InferenceState.PROCESSING,
+        )
         self._check_auto_start()
 
     @Slot(GestureRecognitionEvent)
