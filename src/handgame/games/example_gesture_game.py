@@ -15,14 +15,15 @@ from typing import ClassVar
 
 from handgame.core.events import GameActionEvent, GestureRecognitionEvent
 from handgame.core.models import PlayerId
+from handgame.core.pjm_alphabet import STATIC_LETTERS
 from handgame.games.base_game import BaseGame, GameEventSink
 from handgame.games.game_context import GameContext
 from handgame.games.game_result import GameEndReason, GameResult
 
 logger = logging.getLogger(__name__)
 
-# Placeholder PJM sign pool - team to replace with real dictionary.
-_SIGN_POOL: list[str] = ["A", "B", "C", "D", "E"]
+# Only letters the per-frame recognizer can see (no dynamic letters).
+_SIGN_POOL: list[str] = list(STATIC_LETTERS)
 
 
 class ExampleGestureGame(BaseGame):

@@ -3,6 +3,7 @@ import logging
 from PySide6.QtCore import QObject, Signal, Slot
 
 from handgame.camera.camera_manager import CameraManager
+from handgame.core.config import AppConfig
 from handgame.core.event_bus import EventBus
 from handgame.core.events import (
     ApplicationErrorEvent,
@@ -32,12 +33,19 @@ class GUIIntegrationController(QObject):
     ui_game_finished = Signal(object)  # GameResult
     ui_error_occurred = Signal(ApplicationErrorEvent)
 
-    def __init__(self):
+    def __init__(
+        self,
+        camera_backend: str | None = None,
+        default_algorithm: str | None = None,
+        config: AppConfig | None = None,
+    ):
         super().__init__()
+        self.config = config or AppConfig.from_env()
+        self.default_algorithm = default_algorithm or self.config.default_algorithm
         self.event_bus = EventBus()
 
-        self.camera_mgr = CameraManager()
-        self.inference_mgr = InferenceManager()
+        self.camera_mgr = CameraManager(backend=camera_backend, config=self.config)
+        self.inference_mgr = InferenceManager(config=self.config)
         self.session_mgr = SessionManager()
         self.stats_sink = StatsSink()
 
@@ -99,9 +107,9 @@ class GUIIntegrationController(QObject):
         cam = CameraId[camera_id_str]
         player = PlayerId[player_id_str]
         self.session_mgr.register_camera_mapping(cam, player)
-        self.session_mgr.register_algorithm_mapping(cam, "MOCK_YOLO")
+        self.session_mgr.register_algorithm_mapping(cam, self.default_algorithm)
         self.camera_mgr.start_camera(cam, player)
-        self.inference_mgr.start_algorithm(cam, "MOCK_YOLO")
+        self.inference_mgr.start_algorithm(cam, self.default_algorithm)
 
     @Slot(str)
     def stop_camera(self, camera_id_str: str):

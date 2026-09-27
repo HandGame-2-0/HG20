@@ -1,21 +1,53 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 
+from handgame.core.config import ALGORITHM_MEDIAPIPE_PJM_STATIC, ALGORITHM_MOCK, AppConfig
 from handgame.core.events import (
     ApplicationErrorEvent,
     FramePacket,
     GestureRecognitionEvent,
     InferenceStatusEvent,
 )
-from handgame.core.models import CameraId, InferenceState
+from handgame.core.models import CameraId, InferenceState, Severity, SourceType
 from handgame.core.qt_utils import wait_for_thread_stopped
+from handgame.recognition.inference_worker import BaseInferenceWorker
+from handgame.recognition.mediapipe_letter_worker import MediaPipeLetterWorker
 from handgame.recognition.mock_inference_worker import MockInferenceWorker, MockResultSpec
 
 logger = logging.getLogger(__name__)
+
+InferenceWorkerFactory = Callable[[CameraId, str, AppConfig], BaseInferenceWorker]
+
+
+def _create_mock_worker(
+    camera_id: CameraId, algorithm_id: str, _: AppConfig
+) -> BaseInferenceWorker:
+    return MockInferenceWorker(camera_id=camera_id, algorithm_id=algorithm_id)
+
+
+def _create_mediapipe_letter_worker(
+    camera_id: CameraId, algorithm_id: str, config: AppConfig
+) -> BaseInferenceWorker:
+    # Models are loaded later, in worker.start(), inside the worker's thread.
+    return MediaPipeLetterWorker(
+        camera_id,
+        algorithm_id,
+        hand_model_path=config.hand_model_path,
+        letter_model_path=config.letter_model_path,
+        stable_frames=config.stable_frames,
+    )
+
+
+# Registry of recognition algorithms, keyed by algorithm_id.
+ALGORITHM_REGISTRY: dict[str, InferenceWorkerFactory] = {
+    ALGORITHM_MOCK: _create_mock_worker,
+    ALGORITHM_MEDIAPIPE_PJM_STATIC: _create_mediapipe_letter_worker,
+}
 
 
 class InferenceWorkerHandle(QObject):
@@ -31,17 +63,19 @@ class InferenceWorkerHandle(QObject):
 @dataclass
 class InferenceRuntime:
     thread: QThread
-    worker: MockInferenceWorker
+    worker: BaseInferenceWorker
     handle: InferenceWorkerHandle
 
 
 class InferenceManager(QObject):
     gesture_recognized = Signal(object)
+    hand_tracked = Signal(object)  # HandTrackingEvent
     inference_status_changed = Signal(object)
     error_occurred = Signal(object)
 
-    def __init__(self) -> None:
+    def __init__(self, config: AppConfig | None = None) -> None:
         super().__init__()
+        self._config = config or AppConfig.from_env()
 
         self._runtimes: dict[CameraId, InferenceRuntime] = {}
         self._states: dict[CameraId, InferenceState] = {}
@@ -53,7 +87,23 @@ class InferenceManager(QObject):
             logger.warning("Inference worker already exists for %s", camera_id)
             return
 
-        worker = MockInferenceWorker(camera_id=camera_id, algorithm_id=algorithm_id)
+        factory = ALGORITHM_REGISTRY.get(algorithm_id)
+        if factory is None:
+            message = f"Nieznany algorytm rozpoznawania: {algorithm_id}"
+            logger.error(message)
+            self.error_occurred.emit(
+                ApplicationErrorEvent(
+                    source=SourceType.INFERENCE,
+                    severity=Severity.ERROR,
+                    code="INF_UNKNOWN_ALGORITHM",
+                    message=message,
+                    recoverable=False,
+                    camera_id=camera_id,
+                )
+            )
+            return
+
+        worker = factory(camera_id, algorithm_id, self._config)
         thread = QThread()
         handle = InferenceWorkerHandle()
 
@@ -76,10 +126,11 @@ class InferenceManager(QObject):
             worker.set_expected_sign,
             Qt.ConnectionType.QueuedConnection,
         )
-        handle.configure_result_requested.connect(
-            worker.configure_mock_result,
-            Qt.ConnectionType.QueuedConnection,
-        )
+        if isinstance(worker, MockInferenceWorker):
+            handle.configure_result_requested.connect(
+                worker.configure_mock_result,
+                Qt.ConnectionType.QueuedConnection,
+            )
 
         # Thread lifecycle.
         thread.started.connect(
@@ -92,6 +143,7 @@ class InferenceManager(QObject):
 
         # Worker -> manager.
         worker.gesture_recognized.connect(self._on_gesture_recognized)
+        worker.hand_tracked.connect(self.hand_tracked)
         worker.status_changed.connect(self._on_status_changed)
         worker.error_occurred.connect(self._on_worker_error)
 
@@ -146,7 +198,7 @@ class InferenceManager(QObject):
     def configure_mock_worker(self, camera_id: CameraId, spec: MockResultSpec) -> None:
         """Test-only helper: enqueue a deterministic MockResultSpec for a camera's worker."""
         runtime = self._runtimes.get(camera_id)
-        if runtime is None:
+        if runtime is None or not isinstance(runtime.worker, MockInferenceWorker):
             return
         runtime.handle.configure_result_requested.emit(spec)
 
