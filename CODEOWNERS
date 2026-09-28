@@ -1,0 +1,17 @@
+# Kontrakt komunikacji GUI <-> kamera <-> AI — zmiany wymagają zgody lidera GUI
+/docs/gui_camera_ai_contract.md          @nymviux
+
+# Kontrakty zdarzeń (core/events.py) — współdzielone przez wszystkie zespoły,
+# zmiana kształtu danych wpływa na GUI, MG i AI
+/src/handgame/core/events.py             @nymviux
+
+# współwłasność GUI + MG
+/src/handgame/games/base_game.py         @nymviux @mateusz-jasina
+/src/handgame/games/game_controller.py   @mateusz-jasina
+
+# Warstwa GUI (shell, kontroler integracyjny, ekrany wspólne, widgety)
+/src/handgame/gui/                       @nymviux
+
+# Warstwa kamery i rozpoznawania gestów (AI)
+/src/handgame/camera/                    @krystiansoltys
+/src/handgame/recognition/                @krystiansoltys
