@@ -3,6 +3,7 @@ import logging
 from PySide6.QtCore import QObject, Signal, Slot
 
 from handgame.camera.camera_manager import CameraManager
+from handgame.core.config import AppConfig
 from handgame.core.event_bus import EventBus
 from handgame.core.events import (
     ApplicationErrorEvent,
@@ -27,17 +28,25 @@ class GUIIntegrationController(QObject):
     ui_session_status_changed = Signal(SessionStatusEvent)
     ui_inference_status_changed = Signal(object)  # InferenceStatusEvent
     ui_gesture_result = Signal(object)  # GestureRecognitionEvent
+    ui_hand_tracked = Signal(object)  # HandTrackingEvent, per-frame preview overlay
     ui_game_action = Signal(GameActionEvent)
     ui_control_event = Signal(object)  # ControlEvent
     ui_game_finished = Signal(object)  # GameResult
     ui_error_occurred = Signal(ApplicationErrorEvent)
 
-    def __init__(self):
+    def __init__(
+        self,
+        camera_backend: str | None = None,
+        default_algorithm: str | None = None,
+        config: AppConfig | None = None,
+    ):
         super().__init__()
+        self.config = config or AppConfig.from_env()
+        self.default_algorithm = default_algorithm or self.config.default_algorithm
         self.event_bus = EventBus()
 
-        self.camera_mgr = CameraManager()
-        self.inference_mgr = InferenceManager()
+        self.camera_mgr = CameraManager(backend=camera_backend, config=self.config)
+        self.inference_mgr = InferenceManager(config=self.config)
         self.session_mgr = SessionManager()
         self.stats_sink = StatsSink()
 
@@ -69,6 +78,7 @@ class GUIIntegrationController(QObject):
         self.camera_mgr.frame_ready.connect(self.ui_frame_ready)
         self.inference_mgr.inference_status_changed.connect(self.ui_inference_status_changed)
         self.inference_mgr.gesture_recognized.connect(self.ui_gesture_result)
+        self.inference_mgr.hand_tracked.connect(self.ui_hand_tracked)
         self.session_mgr.session_status_changed.connect(self.ui_session_status_changed)
         self.session_mgr.game_action_ready.connect(self.ui_game_action)
         self.session_mgr.control_event_ready.connect(self.ui_control_event)
@@ -99,9 +109,9 @@ class GUIIntegrationController(QObject):
         cam = CameraId[camera_id_str]
         player = PlayerId[player_id_str]
         self.session_mgr.register_camera_mapping(cam, player)
-        self.session_mgr.register_algorithm_mapping(cam, "MOCK_YOLO")
+        self.session_mgr.register_algorithm_mapping(cam, self.default_algorithm)
         self.camera_mgr.start_camera(cam, player)
-        self.inference_mgr.start_algorithm(cam, "MOCK_YOLO")
+        self.inference_mgr.start_algorithm(cam, self.default_algorithm)
 
     @Slot(str)
     def stop_camera(self, camera_id_str: str):

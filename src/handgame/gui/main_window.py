@@ -21,10 +21,17 @@ from handgame.gui.screens.game_over import GameOverScreen
 from handgame.gui.screens.gameplay import GameplayScreen
 from handgame.gui.screens.minigame_select import MinigameSelectScreen, game_summaries
 from handgame.gui.widgets.difficulty_modal import DifficultyModal
-from handgame.core.events import CameraStatusEvent, FramePacket
+from handgame.core.events import (
+    ApplicationErrorEvent,
+    CameraStatusEvent,
+    FramePacket,
+    GestureRecognitionEvent,
+    HandTrackingEvent,
+)
 from handgame.core.models import CameraState
 from handgame.gui.frame_convert import frame_to_qimage
 from handgame.gui.screens.calibration import CalibrationState
+from handgame.gui.widgets.camera_preview import point_in_zone
 
 logger = logging.getLogger("HandGame2")
 
@@ -192,8 +199,11 @@ class MainWindow(QMainWindow):
         if not self._history:
             return
         prevId = self._history.pop()
+        leaving_game = self._currentPage == Screen.GAME_VIEW.value
         self._currentPage = prevId
         self.router.setCurrentIndex(prevId)
+        if leaving_game:
+            self._call_controller("finish_game")
 
     def _keepOnScreen(self) -> None:
         screen = self.screen()
@@ -266,6 +276,9 @@ class MainWindow(QMainWindow):
         if self.controller is not None:
             self.controller.ui_frame_ready.connect(self._on_frame_ready)
             self.controller.ui_camera_status_changed.connect(self._on_camera_status)
+            self.controller.ui_gesture_result.connect(self._on_gesture_result)
+            self.controller.ui_hand_tracked.connect(self._on_hand_tracked)
+            self.controller.ui_error_occurred.connect(self._on_app_error)
             self.controller.ui_game_finished.connect(self.show_game_result)
 
     def _call_controller(self, method: str, *args) -> bool:
@@ -284,6 +297,13 @@ class MainWindow(QMainWindow):
         previous = self._selected_camera_id
         self._selected_camera_id = camera_id
         logger.info(f"Wybrano kamerę: {camera_id}")
+        if (
+            previous == camera_id
+            and self.calibration_screen.state() is not CalibrationState.CAMERA_ERROR
+        ):
+            # Already started (or starting) - its status/frames keep updating the screen.
+            self.change_screen(Screen.CAMERA_CALIBRATION)
+            return
         self.calibration_screen.clear_frame()
         self.gameplay_screen.preview.clear_frame()
         if self.controller is not None:
@@ -324,6 +344,52 @@ class MainWindow(QMainWindow):
         if state is not None:
             self.calibration_screen.set_state(state)
 
+    @Slot(object)
+    def _on_gesture_result(self, event: object) -> None:
+        if not isinstance(event, GestureRecognitionEvent):
+            return
+        if event.camera_id.name != self._selected_camera_id:
+            return
+        self.gameplay_screen.set_recognition(event.recognized_sign, event.confidence)
+
+    @Slot(object)
+    def _on_hand_tracked(self, event: object) -> None:
+        """Live hand skeleton + current letter on the previews; drives calibration."""
+        if not isinstance(event, HandTrackingEvent):
+            return
+        if event.camera_id.name != self._selected_camera_id:
+            return
+        label = None
+        if event.landmarks is not None and event.letter is not None:
+            label = event.letter
+            if event.confidence is not None:
+                label += f" {round(event.confidence * 100)}%"
+        for preview in (self.calibration_screen.preview, self.gameplay_screen.preview):
+            preview.set_hand_overlay(event.landmarks, label)
+
+        if self.calibration_screen.state() in (
+            CalibrationState.CONNECTING,
+            CalibrationState.CAMERA_ERROR,
+        ):
+            return
+        if event.landmarks is None:
+            state = CalibrationState.DETECTING
+        else:
+            xs, ys = zip(*event.landmarks, strict=True)
+            centre_in_zone = point_in_zone(sum(xs) / len(xs), sum(ys) / len(ys))
+            state = CalibrationState.LOCKED if centre_in_zone else CalibrationState.OUT_OF_ZONE
+        if state is not self.calibration_screen.state():
+            self.calibration_screen.set_state(state)
+
+    @Slot(object)
+    def _on_app_error(self, event: object) -> None:
+        """Surface unrecoverable errors (e.g. missing recognition model)."""
+        if not isinstance(event, ApplicationErrorEvent) or event.recoverable:
+            return
+        box = QMessageBox(QMessageBox.Icon.Warning, "Błąd", event.message, parent=self)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        box.open()  # non-modal: must not block the event loop
+
     @Slot(str)
     def _on_game_selected(self, game_id: str) -> None:
         self._selected_game_id = game_id
@@ -337,6 +403,10 @@ class MainWindow(QMainWindow):
 
     def _start_gameplay(self) -> None:
         level = self._selected_level if self._selected_level is not None else 3
+        # A session left running (e.g. the player navigated away mid-game) would
+        # block prepare_game. Finish it before GAME_VIEW is shown, so its result
+        # does not open GAME_OVER over the new game.
+        self._call_controller("finish_game")
         self.gameplay_screen.reset(lives=DIFFICULTY_PRESETS[level].allowed_mistakes)
         self.change_screen(Screen.GAME_VIEW)
         if self._selected_game_id is not None:
@@ -346,8 +416,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_gameplay_exit(self) -> None:
-        self.change_screen(Screen.GAME_SELECT)
-        self._call_controller("finish_game")
+        self.change_screen(Screen.GAME_SELECT)  # leaving GAME_VIEW finishes the game
 
     @Slot(bool)
     def _on_pause_toggled(self, paused: bool) -> None:
@@ -367,6 +436,9 @@ class MainWindow(QMainWindow):
     @Slot(Screen)
     def change_screen(self, screen: Screen):
         """Switches the currently displayed screen."""
+        if screen is Screen.CAMERA_CALIBRATION and self._selected_camera_id is None:
+            # Calibration shows the stream of the selected camera - pick one first.
+            screen = Screen.CAMERA_SELECT
         if screen is Screen.SETTINGS:
             self.settings_screen.setResolution(self.width(), self.height())
             if self.themeManager is not None:
@@ -375,6 +447,13 @@ class MainWindow(QMainWindow):
         self.router.setCurrentIndex(screen.value)
         if screen.value == self._currentPage:
             return
+        leaving_game = self._currentPage == Screen.GAME_VIEW.value and screen not in (
+            Screen.GAME_OVER,
+            Screen.SETTINGS,
+        )
+        if leaving_game:
+            # Settings is a detour the player returns from; anywhere else ends the game.
+            self._call_controller("finish_game")
         # A finished game is not a page to go back to: Back from GAME_OVER
         # returns to wherever the player was before the game (game select).
         leaving_finished_game = (

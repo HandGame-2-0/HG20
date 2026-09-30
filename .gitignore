@@ -95,7 +95,7 @@ data/processed/
 !assets/**
 
 # Models / heavy artifacts
-models/
+models/*
 checkpoints/
 artifacts/
 *.onnx
@@ -104,8 +104,13 @@ artifacts/
 *.h5
 *.tflite
 *.pkl
+*.joblib
+*.task
 data/raw/
+data/landmarks/
 *.pyc
+# Bundled letter recognition model
+!models/pjm_static_letters.joblib
 
 # Jupyter
 .ipynb_checkpoints/

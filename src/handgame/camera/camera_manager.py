@@ -1,17 +1,48 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 
+from handgame.core.config import CAMERA_BACKEND_MOCK, CAMERA_BACKEND_OPENCV, AppConfig
 from handgame.core.events import CameraStatusEvent
 from handgame.core.models import CameraId, CameraState, PlayerId
 from handgame.core.qt_utils import wait_for_thread_stopped
 
+from .camera_worker import BaseCameraWorker
 from .mock_camera_worker import MockCameraWorker
+from .opencv_camera_worker import OpenCVCameraWorker
 
 logger = logging.getLogger(__name__)
+
+CameraWorkerFactory = Callable[[CameraId, PlayerId | None, AppConfig], BaseCameraWorker]
+
+
+def _create_mock_worker(
+    camera_id: CameraId, player_id: PlayerId | None, config: AppConfig
+) -> BaseCameraWorker:
+    return MockCameraWorker(camera_id, player_id, fps=config.camera_fps)
+
+
+def _create_opencv_worker(
+    camera_id: CameraId, player_id: PlayerId | None, config: AppConfig
+) -> BaseCameraWorker:
+    return OpenCVCameraWorker(
+        camera_id,
+        player_id,
+        device_index=config.camera_device_index.get(camera_id, 0),
+        fps=config.camera_fps,
+        mirror=config.camera_mirror,
+    )
+
+
+# Registry of camera backends, selected by AppConfig.camera_backend.
+CAMERA_BACKENDS: dict[str, CameraWorkerFactory] = {
+    CAMERA_BACKEND_MOCK: _create_mock_worker,
+    CAMERA_BACKEND_OPENCV: _create_opencv_worker,
+}
 
 
 class CameraWorkerHandle(QObject):
@@ -29,7 +60,7 @@ class CameraWorkerHandle(QObject):
 @dataclass
 class CameraRuntime:
     thread: QThread
-    worker: MockCameraWorker
+    worker: BaseCameraWorker
     handle: CameraWorkerHandle
 
 
@@ -40,8 +71,14 @@ class CameraManager(QObject):
     camera_status_changed = Signal(object)  # CameraStatusEvent
     error_occurred = Signal(object)  # ApplicationErrorEvent
 
-    def __init__(self):
+    def __init__(self, backend: str | None = None, config: AppConfig | None = None):
         super().__init__()
+        self._config = config or AppConfig.from_env()
+        self.backend = backend or self._config.camera_backend
+        if self.backend not in CAMERA_BACKENDS:
+            raise ValueError(
+                f"Unknown camera backend {self.backend!r}; expected one of {list(CAMERA_BACKENDS)}"
+            )
         self._runtimes: dict[CameraId, CameraRuntime] = {}
         self._states: dict[CameraId, CameraState] = {}
 
@@ -50,7 +87,7 @@ class CameraManager(QObject):
             logger.warning(f"Kamera {camera_id} jest już uruchomiona.")
             return
 
-        worker = MockCameraWorker(camera_id, player_id)
+        worker = CAMERA_BACKENDS[self.backend](camera_id, player_id, self._config)
         # Parentless: life cycle fully controlled by finished -> deleteLater
         # below. QThread(self) would create a double ownership (C++ parent cascade
         # versus a separately queued `deleteLater` on the same object) – a potential

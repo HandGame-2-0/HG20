@@ -11,6 +11,7 @@ from handgame.core.models import CameraId, InferenceState, PlayerId
 
 class BaseInferenceWorker(QObject):
     gesture_recognized = Signal(object)  # GestureRecognitionEvent
+    hand_tracked = Signal(object)  # HandTrackingEvent, every processed frame (preview only)
     status_changed = Signal(object)  # InferenceStatusEvent
     error_occurred = Signal(object)  # ApplicationErrorEvent
     finished = Signal(object)  # CameraId

@@ -108,6 +108,10 @@ class GameplayScreen(QWidget):
         self._preview = CameraPreviewWidget(show_zone=False)
         self._preview.setMinimumSize(160, 120)
         panel_layout.addWidget(self._preview, stretch=1)
+        self._recognition_label = QLabel()
+        self._recognition_label.setObjectName("RecognitionLabel")
+        self._recognition_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        panel_layout.addWidget(self._recognition_label)
         body.addWidget(self._preview_panel, stretch=1)
 
         outer.addLayout(body, stretch=1)
@@ -151,6 +155,16 @@ class GameplayScreen(QWidget):
         self.set_points(0)
         self.set_time_remaining(seconds)
         self.set_paused(False)
+        self.set_recognition(None, None)
+
+    def set_recognition(self, sign: str | None, confidence: float | None) -> None:
+        """Last recognized letter and its confidence, e.g. "Rozpoznano: A (87%)"."""
+        if sign is None:
+            self._recognition_label.setText("Rozpoznano: -")
+        elif confidence is None:
+            self._recognition_label.setText(f"Rozpoznano: {sign}")
+        else:
+            self._recognition_label.setText(f"Rozpoznano: {sign} ({round(confidence * 100)}%)")
 
     def set_points(self, points: int) -> None:
         self._points_label.setText(f"Punkty {points:03d}")
@@ -194,6 +208,9 @@ class GameplayScreen(QWidget):
 
     def hearts_text(self) -> str:
         return "".join(heart.text() for heart in self._heart_labels)
+
+    def recognition_text(self) -> str:
+        return self._recognition_label.text()
 
     def _toggle_pause(self) -> None:
         self.set_paused(not self._paused)

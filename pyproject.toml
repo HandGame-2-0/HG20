@@ -13,6 +13,9 @@ opencv-python = "^4.10.0.84"
 numpy = "^2.1.1"
 pydantic = "^2.9.2"
 pyyaml = "^6.0.2"
+mediapipe = "^1.0.1"
+scikit-learn = "^1.9.1"
+joblib = "^1.6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
@@ -78,3 +81,7 @@ pretty = true
 mypy_path = "src"
 packages = ["handgame"]
 exclude = ["tests", "src/handgame/gui/ui/"]
+
+[[tool.mypy.overrides]]
+module = ["mediapipe", "mediapipe.*", "joblib"]
+ignore_missing_imports = true

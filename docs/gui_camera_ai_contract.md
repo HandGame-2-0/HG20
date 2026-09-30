@@ -12,9 +12,9 @@ Read this before touching `camera/`, `recognition/`, `session/`, `games/`,
 GUI (widgets)
   -> GUIIntegrationController          (facade; no QtWidgets import)
        -> CameraManager                (owns CameraWorkerHandle + QThread per camera)
-            -> MockCameraWorker / BaseCameraWorker   (runs inside its QThread)
+            -> OpenCVCameraWorker / MockCameraWorker   (BaseCameraWorker, picked via CAMERA_BACKENDS)
        -> InferenceManager             (owns InferenceWorkerHandle + QThread per camera)
-            -> MockInferenceWorker / BaseInferenceWorker  (runs inside its QThread)
+            -> MediaPipeLetterWorker / MockInferenceWorker  (BaseInferenceWorker, via ALGORITHM_REGISTRY)
        -> SessionManager               (session state machine)
             -> GameController          (owns the active BaseGame instance)
                  -> BaseGame subclass  (pure Python, no Qt)
@@ -27,6 +27,92 @@ GUI (widgets)
 - it only exposes slots (`handle_camera_status`, `handle_inference_status`,
 `handle_gesture_event`) that the controller wires up. This keeps
 `SessionManager` fully testable without any camera/AI machinery running.
+
+## Backends, algorithms and configuration
+
+`core/config.py` defines `AppConfig`. Managers and `GUIIntegrationController`
+default to `AppConfig.from_env()`, so every value can be overridden with an
+environment variable:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `HANDGAME_CAMERA_BACKEND` | `opencv` | `opencv` (real webcam) or `mock` (no hardware) - key in `CAMERA_BACKENDS` (`camera/camera_manager.py`). |
+| `HANDGAME_CAMERA_INDEX_1` / `_2` | `0` / `1` | OpenCV device index for `CameraId.CAMERA_1` / `CAMERA_2`. |
+| `HANDGAME_CAMERA_FPS` | `30` | Frame polling rate. |
+| `HANDGAME_CAMERA_MIRROR` | `true` | Flip frames horizontally (selfie view). |
+| `HANDGAME_ALGORITHM` | `MEDIAPIPE_PJM_STATIC` | Algorithm `select_camera` starts - key in `ALGORITHM_REGISTRY` (`recognition/inference_manager.py`). `MOCK_YOLO` = mock. |
+| `HANDGAME_HAND_MODEL` | `models/hand_landmarker.task` | MediaPipe hand landmarker (not committed; downloaded from Google on first use if missing). |
+| `HANDGAME_LETTER_MODEL` | `models/pjm_static_letters.joblib` (bundled) | Letter classifier: `.joblib` = sklearn bundle, `.onnx` = PP2Project net. |
+| `HANDGAME_STABLE_FRAMES` | `5` | Frames a letter must stay top-1 before it is reported (`1` = every frame). |
+
+The test-suite forces `mock` / `MOCK_YOLO` in `tests/conftest.py`.
+
+### `MEDIAPIPE_PJM_STATIC` (static PJM letters)
+
+`MediaPipeLetterWorker` (`recognition/mediapipe_letter_worker.py`) runs per
+frame: `MediaPipeHandDetector` (MediaPipe Tasks `HandLandmarker`, VIDEO mode,
+one hand) -> `HandDetection` (21 image landmarks in pixels, 21 world landmarks
+in metres, handedness) -> `LetterClassifier.predict(hand)` ->
+`(letter, probability)`. Each classifier computes its own features from the
+detection. The event carries `recognized_sign`, `confidence` (the classifier
+probability), `is_correct` (vs. `expected_sign`, `None` if none is set) and
+`latency_ms`.
+
+`load_letter_classifier(path)` (`recognition/letter_classifier.py`) picks the
+classifier by file suffix:
+
+- `.joblib` -> `SklearnLetterClassifier`. The bundle stores `feature_kind`
+  and its version:
+  - `hand_geometry` (bundled `models/pjm_static_letters.joblib`, MLP, letters
+    `A B C E I L M N O P R S T U V W Y`): `hand_geometry_features` =
+    `palm_volume_features` + 210 pairwise world-landmark distances / palm
+    width (228 floats).
+  - `palm_volumes` (method from
+    [MagMat03/handgesture](https://github.com/MagMat03/handgesture)): for the
+    18 landmarks outside the palm base (0, 5, 17), the signed tetrahedron
+    volume vs. the palm plane divided by palm width cubed, from world
+    landmarks; left hands negated. Invariant to position, rotation and hand
+    size.
+  - `landmarks`: `landmarks_to_features`, 63 wrist-relative image coordinates.
+- `.onnx` -> `OnnxDistanceLetterClassifier` (alternative): pretrained net from
+  [worthy11/PP2Project](https://github.com/worthy11/PP2Project) run with
+  `cv2.dnn`. Input: 441 pairwise landmark distances normalized by the hand
+  bounding box (`pairwise_distance_features`), output: softmax over
+  `PP2_LABELS` = `A B C D E F G H I K L M N O P R S U W Y Z` (no `T`, and
+  D F G H K Z are extra vs. `STATIC_LETTERS`). The source repo has no license
+  - local/educational use only, never commit the file.
+
+Games draw letters from `core/pjm_alphabet.STATIC_LETTERS`
+(`A B C E I L M N O P R S T U V W Y`, the letters of the bundled model).
+
+- No hand in view -> no event (the worker just returns to `READY`).
+- `LetterStabilizer`: one event per held letter, after `stable_frames`
+  consecutive identical predictions; removing the hand re-arms it, so the
+  same letter can be shown twice in a row.
+- Models are loaded in `start()` (inside the worker thread). The hand
+  landmarker is downloaded to `hand_model_path` if that file is missing. A
+  failed download or incompatible letter model -> `InferenceState.ERROR` +
+  `ApplicationErrorEvent(code="INF_MODEL_LOAD", recoverable=False)`, which
+  `MainWindow` shows as a message box; the session never starts.
+- A failure while processing a frame -> `INF_RUNTIME` (recoverable), worker
+  goes back to `READY`.
+
+**Plugging in the target model:** either implement the `LetterClassifier`
+protocol (`predict(hand: HandDetection) -> (letter, probability)`) and pass it
+via `classifier_factory`, or write a new `BaseInferenceWorker` and register it
+under a new id in `ALGORITHM_REGISTRY`. Nothing outside `recognition/` has to
+change. Stored sklearn bundles record the feature kind and version
+(`FEATURE_VERSION`, `PALM_VOLUME_VERSION`); bump the version whenever its
+feature function changes, and old models are rejected.
+
+### `OpenCVCameraWorker`
+
+Opens `cv2.VideoCapture(index)` (DirectShow on Windows) in `start_stream()`
+and polls it from a `QTimer` in the worker thread, emitting BGR `ndarray`
+frames. Failing to open -> `CameraState.ERROR` + `CAM_OPEN_FAILED`; 30
+consecutive failed reads -> `ERROR` + `CAM_READ_FAILED` (reported once), and
+the first good frame afterwards returns it to `STREAMING`. `stop_stream()`
+stops the timer, releases the capture, then emits `finished`.
 
 ## Events (`core/events.py`)
 
@@ -179,7 +265,7 @@ or fixture teardown (see `tests/conftest.py`'s `controller` fixture).
 
 1. GUI calls `GUIIntegrationController.select_camera(camera_id, player_id)`
    and `select_algorithm(camera_id, algorithm_id)` (or the default
-   `select_camera` auto-starts `"MOCK_YOLO"`) - these also register the
+   `select_camera` auto-starts `AppConfig.default_algorithm`) - these also register the
    player<->camera and camera<->algorithm mappings on `SessionManager`.
 2. GUI calls `prepare_game(game_id, difficulty, mode)`.
    `SessionManager.prepare_session()` creates `session_id`, stores
@@ -266,13 +352,15 @@ out to `ui_error_occurred` (for the GUI to show a message) and
 
 ## Instructions per team
 
-- **Camera team**: implement `BaseCameraWorker` for real hardware. You must
+- **Camera team**: `OpenCVCameraWorker` is the reference `BaseCameraWorker`;
+  a new backend is one more entry in `CAMERA_BACKENDS`. You must
   provide `start_stream`/`stop_stream`/`restart_stream` as `@Slot()` methods
   that only ever run inside the worker's own thread (post-`moveToThread`),
   emit `frame_captured`/`status_changed`/`error_occurred` as `Signal(object)`,
   and never build an unbounded frame buffer - if `CameraManager` can't keep
   up, drop frames, don't queue them.
-- **AI team**: implement `BaseInferenceWorker.start`/`submit_frame`. Real
+- **AI team**: `MediaPipeLetterWorker` is the reference
+  `BaseInferenceWorker`; see "Plugging in the target model" above. Real
   inference will likely block for real time inside `submit_frame` - that's
   fine, it runs in its own thread, but it must never call back into the GUI
   thread synchronously, and must respect `stop()` being requested mid-inference

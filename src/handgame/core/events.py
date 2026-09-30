@@ -31,6 +31,22 @@ class FramePacket:
 
 
 @dataclass(frozen=True)
+class HandTrackingEvent:
+    """Per-frame hand overlay for the camera preview.
+
+    Unlike GestureRecognitionEvent it is not stabilised and games never see it.
+    ``landmarks`` is None when no hand is in view.
+    """
+
+    camera_id: CameraId
+    frame_id: int
+    landmarks: tuple[tuple[float, float], ...] | None = None  # (x, y) as fractions of frame
+    handedness: str | None = None
+    letter: str | None = None
+    confidence: float | None = None
+
+
+@dataclass(frozen=True)
 class GestureRecognitionEvent:
     session_id: UUID
     player_id: PlayerId
