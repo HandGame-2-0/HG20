@@ -305,6 +305,11 @@ or fixture teardown (see `tests/conftest.py`'s `controller` fixture).
     producing a `GameResult`, which flows through `GameController.game_finished`
     -> `SessionManager.game_finished` -> `GUIIntegrationController.ui_game_finished`
     and `StatsSink.record_result()`.
+    A hosted minigame (own Qt view, see "Hosted minigames" in
+    `docs/game_framework.md`) decides the outcome in its view and reports it
+    back via `GUIIntegrationController.report_view_event(GameActionEvent)` ->
+    `SessionManager.handle_view_event()` (RUNNING only) ->
+    `GameController.handle_view_event()` -> the game's `handle_view_event()`.
 15. `GUIIntegrationController.shutdown()` (wired to `app.aboutToQuit`, and
     called explicitly by tests) stops games, cameras, and AI workers with no
     orphaned `QThread`s left behind.
@@ -341,7 +346,7 @@ out to `ui_error_occurred` (for the GUI to show a message) and
 
 - `GUIIntegrationController`'s public method signatures: `select_camera`,
   `select_algorithm`, `prepare_game`, `start_game`, `pause_game`,
-  `resume_game`, `finish_game`, `reset_game`, `shutdown`.
+  `resume_game`, `finish_game`, `reset_game`, `report_view_event`, `shutdown`.
 - All `ui_*` signals on `GUIIntegrationController`: `ui_camera_status_changed`,
   `ui_session_status_changed`, `ui_inference_status_changed`,
   `ui_gesture_result`, `ui_game_action`, `ui_game_finished`,

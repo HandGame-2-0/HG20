@@ -7,6 +7,7 @@ from handgame.core.errors import InvalidStateTransitionError
 from handgame.core.events import (
     ApplicationErrorEvent,
     CameraStatusEvent,
+    GameActionEvent,
     GestureRecognitionEvent,
     InferenceStatusEvent,
     SessionStatusEvent,
@@ -205,6 +206,13 @@ class SessionManager(QObject):
             return
         self._game_controller.handle_gesture(event)
         self._push_expected_signs()
+
+    @Slot(object)
+    def handle_view_event(self, event: GameActionEvent) -> None:
+        """Outcome reported by a hosted game view (e.g. MOLE_HIT); only while RUNNING."""
+        if self._state != SessionState.RUNNING:
+            return
+        self._game_controller.handle_view_event(event)
 
     def _emit_error(self, message: str, recoverable=False):
         self.error_occurred.emit(

@@ -1,9 +1,15 @@
 import pytest
 
 from handgame.core.errors import InvalidStateTransitionError
-from handgame.core.events import CameraStatusEvent, GestureRecognitionEvent, InferenceStatusEvent
+from handgame.core.events import (
+    CameraStatusEvent,
+    GameActionEvent,
+    GestureRecognitionEvent,
+    InferenceStatusEvent,
+)
 from handgame.core.models import CameraId, CameraState, InferenceState, PlayerId, SessionState
 from handgame.games.example_gesture_game import ExampleGestureGame
+from handgame.games.moles_game import MolesGame
 from handgame.session.session_manager import SessionManager
 
 
@@ -19,10 +25,10 @@ def test_legal_and_illegal_transitions(qapp):
         mgr.prepare_session("TEST2", 2)
 
 
-def _make_ready_session(mgr: SessionManager) -> None:
+def _make_ready_session(mgr: SessionManager, game_id: str = ExampleGestureGame.GAME_ID) -> None:
     mgr.register_camera_mapping(CameraId.CAMERA_1, PlayerId.PLAYER_1)
     mgr.register_algorithm_mapping(CameraId.CAMERA_1, "MOCK_YOLO")
-    mgr.prepare_session(ExampleGestureGame.GAME_ID, 1)
+    mgr.prepare_session(game_id, 1)
     mgr.handle_camera_status(
         CameraStatusEvent(CameraId.CAMERA_1, CameraState.CONNECTING, CameraState.STREAMING)
     )
@@ -194,3 +200,20 @@ def test_session_finishes_when_game_completes_on_its_own(qapp):
     # "Play again" must be possible straight away.
     mgr.prepare_session(ExampleGestureGame.GAME_ID, 1)
     assert mgr._state == SessionState.RUNNING
+
+
+def test_view_event_reaches_hosted_game_only_while_running(qapp):
+    mgr = SessionManager()
+    _make_ready_session(mgr, MolesGame.GAME_ID)
+    hit = GameActionEvent(
+        session_id=mgr.session_id,
+        player_id=PlayerId.PLAYER_1,
+        action_type=MolesGame.ACTION_MOLE_HIT,
+        payload={"letter": "A", "points": 10},
+    )
+
+    mgr.handle_view_event(hit)
+    mgr.pause_session()
+    mgr.handle_view_event(hit)
+
+    assert mgr._game_controller._game.get_player_state(PlayerId.PLAYER_1).score == 10

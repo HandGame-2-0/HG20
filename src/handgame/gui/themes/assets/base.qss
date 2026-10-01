@@ -372,6 +372,14 @@ QFrame#GameplayArea {
     border-radius: 8px;
 }
 
+/* A game is embedded: no placeholder frame; bar colour fills the letterbox
+   bands left by games that keep their own aspect ratio. */
+QFrame#GameplayArea[hasGame="true"] {
+    background-color: $bar;
+    border: none;
+    border-radius: 0;
+}
+
 /* Game-over results table: bar-coloured panel */
 QFrame#ResultsCard {
     background-color: $bar;

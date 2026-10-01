@@ -18,16 +18,13 @@ from handgame.games.example_gesture_game import ExampleGestureGame
 from handgame.games.game_context import DIFFICULTY_PRESETS, PlayerGameState
 from handgame.games.game_controller import GAME_REGISTRY
 from handgame.games.game_result import GameEndReason, GameResult
+from handgame.games.moles_game import MolesGame
 from handgame.gui.screen import Screen
 from handgame.gui.screens.calibration import CalibrationState, HandCalibrationScreen
 from handgame.gui.screens.camera_select import CameraOption, CameraSelectScreen
 from handgame.gui.screens.game_over import GameOverScreen, accuracy_percent, format_points
 from handgame.gui.screens.gameplay import HEART_EMPTY, HEART_FULL, GameplayScreen, format_clock
-from handgame.gui.screens.minigame_select import (
-    GameSummary,
-    MinigameSelectScreen,
-    game_summaries,
-)
+from handgame.gui.screens.minigame_select import GameSummary, MinigameSelectScreen, game_summaries
 from handgame.gui.widgets.difficulty_modal import LEVEL_LABELS, DifficultyModal
 
 
@@ -43,6 +40,7 @@ def _collect(signal):
 def test_game_summaries_prettify_registry_ids():
     summaries = game_summaries(GAME_REGISTRY)
     assert GameSummary(ExampleGestureGame.GAME_ID, "Example Gesture Game") in summaries
+    assert GameSummary(MolesGame.GAME_ID, "Bicie kreta") in summaries
 
 
 def test_format_clock_and_points():
@@ -338,6 +336,7 @@ class _FakeController(QObject):
     ui_hand_tracked = Signal(object)
     ui_error_occurred = Signal(object)
     ui_game_finished = Signal(object)
+    ui_session_status_changed = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -480,9 +479,7 @@ def test_hand_tracking_draws_skeleton_and_letter_on_preview(qapp):
 
     points = tuple((0.5, 0.5) for _ in range(21))
     controller.ui_hand_tracked.emit(
-        HandTrackingEvent(
-            CameraId.CAMERA_1, 1, landmarks=points, letter="L", confidence=0.91
-        )
+        HandTrackingEvent(CameraId.CAMERA_1, 1, landmarks=points, letter="L", confidence=0.91)
     )
     assert window.calibration_screen.preview.has_hand_overlay()
     assert window.calibration_screen.preview.hand_label() == "L 91%"
@@ -537,3 +534,70 @@ def test_back_from_game_over_skips_finished_game(qapp):
 
     window.ui.backButton.click()
     assert window.router.currentWidget() is window.minigame_select_screen
+
+
+def test_moles_view_follows_session_and_reports_to_controller(qapp):
+    from uuid import uuid4
+
+    from handgame.core.events import SessionStatusEvent
+    from handgame.core.models import SessionState
+    from handgame.gui.game_views import MolesView
+    from handgame.gui.main_window import MainWindow
+
+    controller = _FakeController()
+    window = MainWindow(controller)
+    window.change_screen(Screen.GAME_SELECT)
+    window.minigame_select_screen.game_selected.emit(MolesGame.GAME_ID)
+    window.difficulty_modal.button_for(1).click()
+
+    view = window._game_view
+    assert isinstance(view, MolesView)
+    assert window.gameplay_screen.hearts_text() == ""
+
+    session_id = uuid4()
+    status = controller.ui_session_status_changed
+    status.emit(SessionStatusEvent(session_id, SessionState.PREPARING, SessionState.RUNNING))
+    assert view.game_widget.GameState.name == "STARTING"
+
+    game = view.game_widget
+    game.GameState = type(game.GameState).PLAYING
+    tile = game.tile_manager.tiles[0]
+    tile.start_cycle(letter="A", wait_ms=5000, use_basket=False, basket_delay_ms=0)
+    tile.show_letter = True
+    view.handle_letter("A")
+    (call,) = (c for c in controller.calls if c[0] == "report_view_event")
+    assert call[1].action_type == MolesGame.ACTION_MOLE_HIT
+    assert call[1].session_id == session_id
+    assert window.gameplay_screen.points_text() == "Punkty 010"
+
+    status.emit(SessionStatusEvent(session_id, SessionState.RUNNING, SessionState.FINISHED))
+    view.handle_letter("A")
+    assert len([c for c in controller.calls if c[0] == "report_view_event"]) == 1
+
+
+def test_gameplay_area_drops_placeholder_frame_while_game_is_embedded(qapp):
+    screen = GameplayScreen()
+    area = screen._gameplay_area
+
+    screen.set_game_widget(QWidget())
+    assert area.property("hasGame") is True
+    assert area.layout().contentsMargins().left() == 0
+
+    screen.set_game_widget(None)
+    assert area.property("hasGame") is False
+    assert area.layout().contentsMargins().left() > 0
+
+
+def test_difficulty_modal_uses_game_level_names(qapp):
+    from handgame.gui.main_window import MainWindow
+
+    window = MainWindow(_FakeController())
+    window.change_screen(Screen.GAME_SELECT)
+
+    window.minigame_select_screen.game_selected.emit(MolesGame.GAME_ID)
+    assert window.difficulty_modal.button_for(1).text() == "Łatwy"
+    assert window.difficulty_modal.button_for(5).text() == "Ekspert"
+    window.difficulty_modal.close_overlay()
+
+    window.minigame_select_screen.game_selected.emit(ExampleGestureGame.GAME_ID)
+    assert window.difficulty_modal.button_for(1).text() == LEVEL_LABELS[1]

@@ -136,6 +136,11 @@ class GUIIntegrationController(QObject):
         self.inference_mgr.start_algorithm(cam, algorithm_id)
         self.session_mgr.register_algorithm_mapping(cam, algorithm_id)
 
+    @Slot(object)
+    def report_view_event(self, event: GameActionEvent) -> None:
+        """Outcome from a hosted minigame view (see gui/game_views) -> active game."""
+        self.session_mgr.handle_view_event(event)
+
     @Slot()
     def start_game(self):
         self.session_mgr.start_session()

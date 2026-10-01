@@ -1,3 +1,6 @@
+# Minigames copied 1:1 from the MG team - hooks must not touch them.
+exclude: ^src/handgame/external_games/
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

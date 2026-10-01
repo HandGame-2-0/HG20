@@ -23,9 +23,6 @@ class ThemeToken:
     border: str
     font_family: str = "Segoe UI"
     font_size_px: int = 14
-    # Optional finer-grained tokens used by the game screens (header/HUD bars,
-    # hover, selection, focus...). None = derived from the base tokens above,
-    # so a palette only has to set the ones it wants to differ.
     heading: str | None = None
     background_end: str | None = None  # bottom of the app background gradient
     surface_alt: str | None = None  # hover, gameplay area
