@@ -10,6 +10,7 @@ session behavior, not single-game logic.
 from __future__ import annotations
 
 import logging
+from typing import Protocol, runtime_checkable
 
 from PySide6.QtCore import QObject, Signal
 
@@ -25,13 +26,22 @@ from handgame.games.base_game import BaseGame
 from handgame.games.example_gesture_game import ExampleGestureGame
 from handgame.games.game_context import GameContext, PlayerGameState
 from handgame.games.game_result import GameEndReason, GameResult
+from handgame.games.moles_game import MolesGame
 
 logger = logging.getLogger(__name__)
 
 # Registry of available minigames. New minigame = one entry here.
 GAME_REGISTRY: dict[str, type[BaseGame]] = {
     ExampleGestureGame.GAME_ID: ExampleGestureGame,
+    MolesGame.GAME_ID: MolesGame,
 }
+
+
+@runtime_checkable
+class ViewEventHandler(Protocol):
+    """A hosted minigame whose Qt view reports outcomes back (see MolesGame)."""
+
+    def handle_view_event(self, event: GameActionEvent) -> None: ...
 
 
 class GameController(QObject):
@@ -80,6 +90,13 @@ class GameController(QObject):
             reaction_time_ms=event.latency_ms,
         )
         self.metrics_ready.emit(metrics)
+
+    def handle_view_event(self, event: GameActionEvent) -> None:
+        """Forward an outcome reported by a hosted game view to the active game."""
+        if not isinstance(self._game, ViewEventHandler):
+            logger.warning("View event ignored - active game does not accept view events")
+            return
+        self._game.handle_view_event(event)
 
     def use_hint(self, player_id: PlayerId) -> None:
         if self._game is not None:

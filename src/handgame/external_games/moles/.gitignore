@@ -1,0 +1,33 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Qt / PySide specyficzne
+*.user
+*.autosave
+.qtcreator/
+# Odkomentuj poniższe, jeśli pliki ui/qrc kompilujesz automatycznie do .py w trakcie budowania:
+# ui_*.py
+# *_rc.py
+
+# Pakowanie i instalatory (np. PyInstaller / cx_Freeze)
+build/
+dist/
+*.spec
+*.egg-info/
+
+# Edytory i IDE
+.vscode/
+.idea/
+*.swp
+
+# Pliki systemowe
+.DS_Store
+Thumbs.db

@@ -93,6 +93,8 @@ data/processed/
 # Allow committed static assets used by the app
 !assets/
 !assets/**
+# Minigames copied 1:1 from the MG team ship their own images
+!src/handgame/external_games/**/*.png
 
 # Models / heavy artifacts
 models/*

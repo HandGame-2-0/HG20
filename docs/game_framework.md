@@ -72,7 +72,7 @@ A minigame's `_on_gesture` can assume all of the above already holds.
 
 ```
 CREATED --> READY --> RUNNING <--> PAUSED --> FINISHED
-   |          |           |           |           
+   |          |           |           |
    +--------- ERROR <-----+-----------+
 ```
 
@@ -252,3 +252,30 @@ Use `games/example_gesture_game.py` as the template. Steps:
 - Implement rules specific to another minigame's genre inside `BaseGame`
   itself - genre-specific logic (Puzzle, Memory, Guitar-Hero-style timing,
   etc.) belongs entirely in the subclass, never in the shared base.
+
+## Hosted minigames (Qt view from the MG team)
+
+An exception to the rules above, for a minigame delivered as a finished Qt
+widget whose code we do not change. Example: whack-a-mole ("Bicie kreta").
+
+- The MG code is copied 1:1 into `src/handgame/external_games/<game>/`.
+  Do not edit it; to update, re-copy it. The directory is excluded from
+  black/isort/ruff/mypy and pre-commit.
+- Game logic, timers and rendering stay in the MG widget. The `BaseGame`
+  subclass (`games/moles_game.py`) only keeps score/mistakes for stats and
+  builds the `GameResult`.
+- `gui/game_views/` hosts the widget: `GAME_VIEWS[GAME_ID]` builds a
+  `HostedGameView`, which `MainWindow` embeds via
+  `GameplayScreen.set_game_widget()`. It is driven by
+  `ui_session_status_changed` (RUNNING -> `begin`, PAUSED -> `pause`,
+  FINISHED/ERROR -> `stop`) and by `ui_gesture_result` (`handle_letter`).
+- The view reports outcomes as `GameActionEvent` through
+  `GUIIntegrationController.report_view_event` -> `SessionManager.handle_view_event`
+  (RUNNING only) -> `GameController.handle_view_event` -> the game's
+  `handle_view_event` (games matching the `ViewEventHandler` protocol).
+  For moles: `MOLE_HIT` (score + step), `MOLE_MISS` (mistake),
+  `MOLE_ROUND_OVER` (`end(COMPLETED)`).
+- Adapting the MG widget happens only in the host (`moles_view.py`):
+  isolated import of their `config`/`components` modules, removing their
+  app-wide key filter, disabling their "exit" (it closed the whole window),
+  skipping their start/difficulty menus.

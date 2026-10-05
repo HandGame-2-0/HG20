@@ -36,18 +36,20 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 100
 target-version = ["py311"]
-extend-exclude = "src/handgame/gui/ui/ui_.*\\.py"
+# external_games/: minigames copied 1:1 from the MG team - never reformat them.
+extend-exclude = "src/handgame/gui/ui/ui_.*\\.py|src/handgame/external_games/"
 
 [tool.isort]
 profile = "black"
 line_length = 100
 src_paths = ["src", "tests"]
-extend_skip_glob = ["src/handgame/gui/ui/ui_*.py"]
+extend_skip_glob = ["src/handgame/gui/ui/ui_*.py", "src/handgame/external_games/*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+extend-exclude = ["src/handgame/external_games"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N"]
@@ -80,7 +82,7 @@ warn_return_any = false
 pretty = true
 mypy_path = "src"
 packages = ["handgame"]
-exclude = ["tests", "src/handgame/gui/ui/"]
+exclude = ["tests", "src/handgame/gui/ui/", "src/handgame/external_games/"]
 
 [[tool.mypy.overrides]]
 module = ["mediapipe", "mediapipe.*", "joblib"]

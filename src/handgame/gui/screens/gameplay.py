@@ -17,7 +17,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from handgame.gui.screens.common import init_screen
+from handgame.gui.screens.common import init_screen, set_dynamic_property
 from handgame.gui.widgets.camera_preview import CameraPreviewWidget
 
 HEART_FULL = "\N{BLACK HEART SUIT}"
@@ -92,6 +92,7 @@ class GameplayScreen(QWidget):
         self._gameplay_area = QFrame()
         self._gameplay_area.setObjectName("GameplayArea")
         self._gameplay_area_layout = QVBoxLayout(self._gameplay_area)
+        self._placeholder_margins = self._gameplay_area_layout.contentsMargins()
         self._placeholder = QLabel("GRA")
         self._placeholder.setObjectName("SectionHeading")
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -127,8 +128,13 @@ class GameplayScreen(QWidget):
             self._game_widget.setParent(None)
         self._game_widget = widget
         self._placeholder.setVisible(widget is None)
+        # A running game fills the area edge to edge - no dashed placeholder frame.
+        set_dynamic_property(self._gameplay_area, "hasGame", widget is not None)
         if widget is not None:
+            self._gameplay_area_layout.setContentsMargins(0, 0, 0, 0)
             self._gameplay_area_layout.addWidget(widget)
+        else:
+            self._gameplay_area_layout.setContentsMargins(self._placeholder_margins)
 
     # --- camera preview panel ---
 

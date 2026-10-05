@@ -27,8 +27,10 @@ from handgame.core.events import (
     FramePacket,
     GestureRecognitionEvent,
     HandTrackingEvent,
+    SessionStatusEvent,
 )
-from handgame.core.models import CameraState
+from handgame.core.models import CameraState, PlayerId, SessionState
+from handgame.gui.game_views import GAME_VIEWS, HostedGameView
 from handgame.gui.frame_convert import frame_to_qimage
 from handgame.gui.screens.calibration import CalibrationState
 from handgame.gui.widgets.camera_preview import point_in_zone
@@ -244,6 +246,7 @@ class MainWindow(QMainWindow):
         self._selected_camera_id: str | None = None
         self._selected_game_id: str | None = None
         self._selected_level: int | None = None
+        self._game_view: HostedGameView | None = None
 
         self.camera_select_screen.camera_confirmed.connect(self._on_camera_confirmed)
 
@@ -280,6 +283,7 @@ class MainWindow(QMainWindow):
             self.controller.ui_hand_tracked.connect(self._on_hand_tracked)
             self.controller.ui_error_occurred.connect(self._on_app_error)
             self.controller.ui_game_finished.connect(self.show_game_result)
+            self.controller.ui_session_status_changed.connect(self._on_session_status)
 
     def _call_controller(self, method: str, *args) -> bool:
         """Call ``controller.<method>(*args)``; log instead of crashing the GUI."""
@@ -351,6 +355,8 @@ class MainWindow(QMainWindow):
         if event.camera_id.name != self._selected_camera_id:
             return
         self.gameplay_screen.set_recognition(event.recognized_sign, event.confidence)
+        if self._game_view is not None:
+            self._game_view.handle_letter(event.recognized_sign)
 
     @Slot(object)
     def _on_hand_tracked(self, event: object) -> None:
@@ -393,6 +399,8 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _on_game_selected(self, game_id: str) -> None:
         self._selected_game_id = game_id
+        view_cls = GAME_VIEWS.get(game_id)
+        self.difficulty_modal.set_labels(view_cls.level_labels() if view_cls else None)
         self.difficulty_modal.open_over(self.centralWidget())
 
     @Slot(int)
@@ -408,11 +416,47 @@ class MainWindow(QMainWindow):
         # does not open GAME_OVER over the new game.
         self._call_controller("finish_game")
         self.gameplay_screen.reset(lives=DIFFICULTY_PRESETS[level].allowed_mistakes)
+        self._install_game_view(self._selected_game_id)
         self.change_screen(Screen.GAME_VIEW)
         if self._selected_game_id is not None:
             # Session auto-starts once camera + AI report ready (SessionManager).
             if self._call_controller("prepare_game", self._selected_game_id, level):
                 self._call_controller("start_game")
+
+    def _install_game_view(self, game_id: str | None) -> None:
+        """Embed the game's own view (hosted minigames, see ``GAME_VIEWS``)."""
+        if self._game_view is not None:
+            self._game_view.stop()
+            self.gameplay_screen.set_game_widget(None)
+            self._game_view.deleteLater()
+            self._game_view = None
+        factory = GAME_VIEWS.get(game_id) if game_id is not None else None
+        if factory is None:
+            return
+        view = factory()
+        view.view_event.connect(lambda event: self._call_controller("report_view_event", event))
+        view.points_changed.connect(self.gameplay_screen.set_points)
+        view.time_changed.connect(self.gameplay_screen.set_time_remaining)
+        self.gameplay_screen.set_game_widget(view)
+        self.gameplay_screen.set_max_lives(0)  # hosted games keep their own rules
+        self._game_view = view
+
+    @Slot(object)
+    def _on_session_status(self, event: object) -> None:
+        """Drive the hosted game view from the session: start, pause, stop."""
+        view = self._game_view
+        if view is None or not isinstance(event, SessionStatusEvent):
+            return
+        if event.current_state is SessionState.RUNNING:
+            if event.previous_state is SessionState.PAUSED:
+                view.resume()
+            else:
+                level = self._selected_level if self._selected_level is not None else 3
+                view.begin(event.session_id, PlayerId.PLAYER_1, level)
+        elif event.current_state is SessionState.PAUSED:
+            view.pause()
+        elif event.current_state in (SessionState.FINISHED, SessionState.ERROR):
+            view.stop()
 
     @Slot()
     def _on_gameplay_exit(self) -> None:

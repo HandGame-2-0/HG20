@@ -14,6 +14,8 @@ Levels come from ``DIFFICULTY_PRESETS`` (1-5).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
@@ -65,6 +67,12 @@ class DifficultyModal(QFrame):
 
         outer = QVBoxLayout(self)
         outer.addWidget(self._card, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def set_labels(self, labels: Mapping[int, str] | None) -> None:
+        """Game-specific level names (e.g. the MG team's own); ``None`` or a
+        missing level falls back to ``LEVEL_LABELS``."""
+        for level, button in self._buttons.items():
+            button.setText((labels or {}).get(level) or LEVEL_LABELS[level])
 
     # --- showing / hiding ---
 
