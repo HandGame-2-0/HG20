@@ -4,7 +4,7 @@ Modular educational app for learning selected PJM (Polish Sign Language) signs u
 
 ## Requirements
 
-- Python 3.11
+- Python 3.11+ (3.12 required on Raspberry Pi, see below)
 - Poetry
 
 ## Repository setup
@@ -64,6 +64,26 @@ Alternatively:
 ```bash
 poetry run handgame
 ```
+
+### Raspberry Pi
+
+Use Python 3.12 on the Pi. On Python 3.11 (aarch64) the app can abort with
+`Fatal Python error: none_dealloc: deallocating None` a short while into a game:
+one of the binary wheels (PySide6, OpenCV or MediaPipe) releases `None` once too
+often. On 3.12+ `None` is immortal, so this can no longer crash the app.
+
+```bash
+poetry env use python3.12
+poetry install
+```
+
+To track down the leaking extension on 3.11, run with `HANDGAME_DEBUG_REFCOUNT=1`.
+The app then logs `refcount(None)` every second, and the count falls steadily in
+the scenario that leaks.
+
+Recognition runs on the CPU (MediaPipe uses the TFLite XNNPACK CPU delegate, and the
+letter classifier is scikit-learn). An AI HAT+ (Hailo) or AI Camera (IMX500) is not
+used yet.
 
 ## Camera and PJM letter recognition
 

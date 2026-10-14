@@ -1,8 +1,9 @@
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 
 from handgame.gui.integration_controller import GUIIntegrationController
@@ -41,6 +42,14 @@ def setup_logging() -> logging.Logger:
     return logger
 
 
+def start_none_refcount_logger(app: QApplication) -> None:
+
+    logger = logging.getLogger("HandGame2")
+    timer = QTimer(app)
+    timer.timeout.connect(lambda: logger.info("refcount(None) = %d", sys.getrefcount(None)))
+    timer.start(1000)
+
+
 def global_exception_hook(exc_type, exc_value, exc_traceback):
     """Global exception hook."""
     logger = logging.getLogger("HandGame2")
@@ -72,8 +81,9 @@ def main():
     # Init PySide6
     app = QApplication(sys.argv)
     app.setApplicationName("HandGame 2.0")
-    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     app.setStyle(QStyleFactory.create("Fusion"))
+    if os.environ.get("HANDGAME_DEBUG_REFCOUNT") == "1":
+        start_none_refcount_logger(app)
 
     try:
         # Init app "brain"
