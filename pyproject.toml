@@ -9,7 +9,7 @@ packages = [{ include = "handgame", from = "src" }]
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13.3"
 pyside6 = "^6.9.1"
-opencv-python = "^4.10.0.84"
+opencv-contrib-python = "^5.0.0.93"
 numpy = "^2.1.1"
 pydantic = "^2.9.2"
 pyyaml = "^6.0.2"

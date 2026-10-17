@@ -67,7 +67,7 @@ poetry run handgame
 
 ### Raspberry Pi
 
-Use Python 3.12 on the Pi. On Python 3.11 (aarch64) the app can abort with
+Use Python 3.12 on the Pi (the app logs a warning at startup on older versions). On Python 3.11 (aarch64) the app can abort with
 `Fatal Python error: none_dealloc: deallocating None` a short while into a game:
 one of the binary wheels (PySide6, OpenCV or MediaPipe) releases `None` once too
 often. On 3.12+ `None` is immortal, so this can no longer crash the app.
