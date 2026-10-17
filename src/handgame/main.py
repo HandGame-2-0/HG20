@@ -1,6 +1,8 @@
 import logging
 import os
+import platform
 import sys
+from collections.abc import MutableMapping
 from logging.handlers import RotatingFileHandler
 
 from PySide6.QtCore import QTimer
@@ -42,6 +44,34 @@ def setup_logging() -> logging.Logger:
     return logger
 
 
+_SNAP_ORIG_SUFFIX = "_VSCODE_SNAP_ORIG"
+
+
+def restore_vscode_snap_env(environ: MutableMapping[str, str] = os.environ) -> list[str]:
+    """Undo the GTK/GLib variables a VS Code snap terminal leaks into child processes.
+
+    """
+    restored = []
+    for key, original in list(environ.items()):
+        if not key.endswith(_SNAP_ORIG_SUFFIX):
+            continue
+        name = key[: -len(_SNAP_ORIG_SUFFIX)]
+        if original:
+            environ[name] = original
+        else:
+            environ.pop(name, None)
+        restored.append(name)
+    return restored
+
+
+def warn_unsupported_pi_python(logger: logging.Logger) -> None:
+    if platform.machine() == "aarch64" and sys.version_info < (3, 12):
+        logger.warning(
+            "Python %d.%d na aarch64: użyj Pythona 3.12 (none_dealloc crash, patrz README).",
+            *sys.version_info[:2],
+        )
+
+
 def start_none_refcount_logger(app: QApplication) -> None:
 
     logger = logging.getLogger("HandGame2")
@@ -77,6 +107,10 @@ def main():
     logger = setup_logging()
     logger.info("Uruchamianie aplikacji...")
     sys.excepthook = global_exception_hook
+    restored = restore_vscode_snap_env()
+    if restored:
+        logger.info("Ogarnięto zmienne środowiska sprzed snapów VS Kołd: %s", ", ".join(restored))
+    warn_unsupported_pi_python(logger)
 
     # Init PySide6
     app = QApplication(sys.argv)
